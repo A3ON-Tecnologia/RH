@@ -12,6 +12,6 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Backups de dados são opcionais no Git — descomente para NÃO versioná-los
-# (podem ficar grandes por causa dos PDFs embutidos em base64)
-# backup-rh-*.json
+# Backups NÃO vão para o Git: contêm dados pessoais dos candidatos
+# (nome, telefone e o PDF do currículo embutido em base64)
+backup-rh-*.json
