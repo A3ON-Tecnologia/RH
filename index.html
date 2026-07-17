@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de RH</title>
+<style>
+  :root{
+    --azul:#1e40af; --azul2:#2563eb; --azul-claro:#eff6ff;
+    --verde:#059669; --verde-claro:#ecfdf5;
+    --amarelo:#d97706; --amarelo-claro:#fffbeb;
+    --vermelho:#dc2626; --vermelho-claro:#fef2f2;
+    --cinza:#64748b; --cinza-claro:#f1f5f9; --borda:#e2e8f0;
+    --texto:#0f172a; --fundo:#f8fafc; --card:#ffffff;
+    --sombra:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--fundo);color:var(--texto);font-size:14px;line-height:1.5}
+  header{background:var(--azul);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sombra)}
+  header .logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
+  header .logo svg{width:26px;height:26px}
+  header .acoes{display:flex;gap:8px}
+  header button{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px}
+  header button:hover{background:rgba(255,255,255,.28)}
+  nav{background:var(--card);display:flex;gap:2px;padding:0 24px;border-bottom:1px solid var(--borda);position:sticky;top:0;z-index:10}
+  nav button{background:none;border:none;padding:14px 18px;cursor:pointer;font-size:14px;color:var(--cinza);font-weight:600;border-bottom:3px solid transparent}
+  nav button:hover{color:var(--azul2)}
+  nav button.ativo{color:var(--azul);border-bottom-color:var(--azul)}
+  main{max-width:1200px;margin:0 auto;padding:24px}
+  .tela{display:none}
+  .tela.ativo{display:block}
+  h2{font-size:20px;margin-bottom:4px}
+  .sub{color:var(--cinza);margin-bottom:20px;font-size:13px}
+  .grid{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:20px;box-shadow:var(--sombra)}
+  .card h3{font-size:15px;margin-bottom:16px;color:var(--azul);display:flex;align-items:center;gap:8px}
+  label{display:block;font-weight:600;font-size:13px;margin-bottom:5px;margin-top:14px;color:#334155}
+  label:first-of-type{margin-top:0}
+  .req{color:var(--vermelho)}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--borda);border-radius:6px;font-size:14px;font-family:inherit;background:#fff;color:var(--texto)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul2);box-shadow:0 0 0 3px var(--azul-claro)}
+  textarea{resize:vertical;min-height:90px}
+  .file-drop{border:2px dashed var(--borda);border-radius:8px;padding:16px;text-align:center;cursor:pointer;color:var(--cinza);transition:.15s;font-size:13px}
+  .file-drop:hover{border-color:var(--azul2);background:var(--azul-claro)}
+  .file-drop.tem{border-color:var(--verde);background:var(--verde-claro);color:var(--verde);font-weight:600}
+  .file-drop input{display:none}
+  .btn{background:var(--azul2);color:#fff;border:none;padding:11px 18px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;width:100%;margin-top:20px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn:hover{background:var(--azul)}
+  .btn.sec{background:var(--cinza-claro);color:var(--texto);width:auto;margin-top:0;padding:8px 14px}
+  .btn.sec:hover{background:#e2e8f0}
+  .btn.mini{padding:5px 10px;font-size:12px;width:auto;margin:0}
+  .btn.danger{background:var(--vermelho-claro);color:var(--vermelho)}
+  .btn.danger:hover{background:#fee2e2}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:10px 12px;color:var(--cinza);font-weight:600;border-bottom:2px solid var(--borda);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+  td{padding:11px 12px;border-bottom:1px solid var(--borda);vertical-align:middle}
+  tr:hover td{background:var(--cinza-claro)}
+  .vazio{text-align:center;padding:40px 20px;color:var(--cinza)}
+  .vazio svg{width:44px;height:44px;opacity:.3;margin-bottom:8px}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:600}
+  .badge.verde{background:var(--verde-claro);color:var(--verde)}
+  .badge.amarelo{background:var(--amarelo-claro);color:var(--amarelo)}
+  .badge.vermelho{background:var(--vermelho-claro);color:var(--vermelho)}
+  .badge.azul{background:var(--azul-claro);color:var(--azul)}
+  .badge.cinza{background:var(--cinza-claro);color:var(--cinza)}
+  .link{color:var(--azul2);cursor:pointer;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+  .link:hover{text-decoration:underline}
+  .acoes-linha{display:flex;gap:6px;flex-wrap:wrap}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+  .busca{position:relative;flex:1;max-width:320px}
+  .busca input{padding-left:34px}
+  .busca svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--cinza)}
+  .venc-box{background:var(--azul-claro);border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-top:16px}
+  .venc-box h4{font-size:13px;color:var(--azul);margin-bottom:10px;text-transform:uppercase;letter-spacing:.03em}
+  .venc-linha{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #bfdbfe;font-size:13px}
+  .venc-linha:last-child{border-bottom:none}
+  .venc-linha b{color:var(--azul)}
+  .venc-final{font-size:15px;font-weight:700}
+  /* Modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;align-items:center;justify-content:center;padding:20px}
+  .modal-bg.ativo{display:flex}
+  .modal{background:#fff;border-radius:12px;max-width:560px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 40px rgba(0,0,0,.2)}
+  .modal-head{padding:18px 22px;border-bottom:1px solid var(--borda);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff}
+  .modal-head h3{font-size:17px}
+  .modal-head .x{background:none;border:none;font-size:24px;cursor:pointer;color:var(--cinza);line-height:1}
+  .modal-body{padding:22px}
+  .info-row{display:flex;padding:9px 0;border-bottom:1px solid var(--borda);font-size:14px}
+  .info-row .k{width:150px;color:var(--cinza);font-weight:600;flex-shrink:0}
+  .info-row .v{flex:1}
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--texto);color:#fff;padding:13px 20px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:200;transform:translateY(120px);opacity:0;transition:.3s;display:flex;align-items:center;gap:10px;font-weight:500}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.erro{background:var(--vermelho)}
+  .toast.ok{background:var(--verde)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+  .stat{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:18px;box-shadow:var(--sombra)}
+  .stat .n{font-size:28px;font-weight:700;color:var(--azul)}
+  .stat .l{color:var(--cinza);font-size:13px;margin-top:2px}
+  .hint{font-size:12px;color:var(--cinza);margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Sistema de RH
+  </div>
+  <div class="acoes">
+    <button onclick="exportarBackup()" title="Salvar cópia de segurança de todos os dados">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Backup
+    </button>
+    <button onclick="document.getElementById('importFile').click()" title="Restaurar dados de um backup">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5-5 5 5M12 15V3"/></svg>
+      Restaurar
+    </button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(this)">
+  </div>
+</header>
+
+<nav>
+  <button class="ativo" data-tela="candidatos" onclick="mostrarTela('candidatos',this)">Candidatos</button>
+  <button data-tela="entrevistas" onclick="mostrarTela('entrevistas',this)">Entrevistas</button>
+  <button data-tela="contratacoes" onclick="mostrarTela('contratacoes',this)">Contratação</button>
+</nav>
+
+<main>
+  <!-- ===================== CANDIDATOS ===================== -->
+  <section class="tela ativo" id="tela-candidatos">
+    <div class="stats" id="statsCandidatos"></div>
+    <div class="grid">
+      <div class="card">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          <span id="tituloFormCand">Novo Candidato</span>
+        </h3>
+        <form id="formCandidato" onsubmit="salvarCandidato(event)">
+          <input type="hidden" id="candId">
+          <label>Nome <span class="req">*</span></label>
+          <input type="text" id="candNome" required placeholder="Nome completo">
+          <label>Telefone <span class="req">*</span></label>
+          <input type="tel" id="candTel" required placeholder="(00) 00000-0000" oninput="mascaraTel(this)">
+          <label>Currículo (PDF)</label>
+          <label class="file-drop" id="dropCand">
+            <input type="file" id="candCurriculo" accept="application/pdf" onchange="arquivoSelecionado(this,'dropCand')">
+            <span id="dropCandTxt">Clique para anexar o PDF do currículo</span>
+          </label>
+          <div class="btn" style="display:flex" onclick="document.getElementById('formCandidato').requestSubmit()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span id="btnCandTxt">Salvar Candidato</span>
+          </div>
+          <button type="button" class="btn sec" id="btnCancelCand" style="display:none;width:100%;margin-top:8px;justify-content:center" onclick="resetForm('candidato')">Cancelar edição</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <div class="busca">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="buscaCand" placeholder="Buscar candidato..." oninput="renderCandidatos()">
+          </div>
+        </div>
+        <div id="listaCandidatos"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ENTREVISTAS ===================== -->
+  <section class="tela" id="tela-entrevistas">
+    <div class="grid">
+      <div class="card">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="tituloFormEntr">Nova Entrevista</span>
+        </h3>
+        <form id="formEntrevista" onsubmit="salvarEntrevista(event)">
+          <input type="hidden" id="entrId">
+          <label>Candidato <span class="req">*</span></label>
+          <select id="entrCand" required></select>
+          <label>Data da entrevista <span class="req">*</span></label>
+          <input type="date" id="entrData" required>
+          <label>Situação</label>
+          <select id="entrSituacao">
+            <option value="Agendada">Agendada</option>
+            <option value="Realizada">Realizada</option>
+            <option value="Aprovado">Aprovado</option>
+            <option value="Reprovado">Reprovado</option>
+            <option value="Em análise">Em análise</option>
+          </select>
+          <label>Andamento da entrevista <span class="req">*</span></label>
+          <textarea id="entrAndamento" required placeholder="Descreva como foi a entrevista, impressões, pontos observados..."></textarea>
+          <label>Formulário da entrevista (anexo)</label>
+          <label class="file-drop" id="dropEntr">
+            <input type="file" id="entrFormulario" onchange="arquivoSelecionado(this,'dropEntr')">
+            <span id="dropEntrTxt">Clique para anexar o formulário</span>
+          </label>
+          <div class="btn" style="display:flex" onclick="document.getElementById('formEntrevista').requestSubmit()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span id="btnEntrTxt">Salvar Entrevista</span>
+          </div>
+          <button type="button" class="btn sec" id="btnCancelEntr" style="display:none;width:100%;margin-top:8px;justify-content:center" onclick="resetForm('entrevista')">Cancelar edição</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <div class="busca">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="buscaEntr" placeholder="Buscar por candidato..." oninput="renderEntrevistas()">
+          </div>
+        </div>
+        <div id="listaEntrevistas"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CONTRATAÇÃO ===================== -->
+  <section class="tela" id="tela-contratacoes">
+    <div class="grid">
+      <div class="card">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+          <span id="tituloFormContr">Nova Contratação</span>
+        </h3>
+        <form id="formContratacao" onsubmit="salvarContratacao(event)">
+          <input type="hidden" id="contrId">
+          <label>Candidato <span class="req">*</span></label>
+          <select id="contrCand" required></select>
+          <label>Departamento <span class="req">*</span></label>
+          <input list="listaDepartamentos" id="contrDepto" required placeholder="Selecione ou digite">
+          <datalist id="listaDepartamentos">
+            <option value="Contábil"><option value="Fiscal"><option value="Departamento Pessoal">
+            <option value="Financeiro"><option value="Administrativo"><option value="Recursos Humanos">
+            <option value="Societário"><option value="Recepção"><option value="TI"><option value="Diretoria">
+          </datalist>
+          <label>Data de admissão <span class="req">*</span></label>
+          <input type="date" id="contrAdmissao" required onchange="calcularVencimentos()">
+          <label>Período de experiência <span class="req">*</span></label>
+          <select id="contrExperiencia" onchange="calcularVencimentos()">
+            <option value="45">45 + 45 dias (90 dias)</option>
+            <option value="30">30 + 30 dias (60 dias)</option>
+          </select>
+          <div class="venc-box" id="vencBox" style="display:none">
+            <h4>Vencimento dos períodos de experiência</h4>
+            <div id="vencConteudo"></div>
+          </div>
+          <div class="btn" style="display:flex" onclick="document.getElementById('formContratacao').requestSubmit()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span id="btnContrTxt">Salvar Contratação</span>
+          </div>
+          <button type="button" class="btn sec" id="btnCancelContr" style="display:none;width:100%;margin-top:8px;justify-content:center" onclick="resetForm('contratacao')">Cancelar edição</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <div class="busca">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="buscaContr" placeholder="Buscar contratação..." oninput="renderContratacoes()">
+          </div>
+        </div>
+        <div id="listaContratacoes"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Modal genérico -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)fecharModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitulo"></h3>
+      <button class="x" onclick="fecharModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ Banco de dados (IndexedDB) ============ */
+let db;
+const DB_NOME='sistema_rh', DB_VER=1;
+const STORES=['candidatos','entrevistas','contratacoes'];
+
+function abrirDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NOME,DB_VER);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      STORES.forEach(s=>{ if(!d.objectStoreNames.contains(s)) d.createObjectStore(s,{keyPath:'id',autoIncrement:true}); });
+    };
+    req.onsuccess=e=>{db=e.target.result;res()};
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+function tx(store,modo='readonly'){ return db.transaction(store,modo).objectStore(store); }
+function getAll(store){ return new Promise((res,rej)=>{ const r=tx(store).getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function getOne(store,id){ return new Promise((res,rej)=>{ const r=tx(store).get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function put(store,obj){ return new Promise((res,rej)=>{ const r=tx(store,'readwrite').put(obj); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function del(store,id){ return new Promise((res,rej)=>{ const r=tx(store,'readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+
+/* ============ Utilidades ============ */
+function toast(msg,tipo='ok'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show '+tipo; setTimeout(()=>t.className='toast',2600); }
+function mascaraTel(el){ let v=el.value.replace(/\D/g,'').slice(0,11); if(v.length>10) v=v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3'); else if(v.length>6) v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3'); else if(v.length>2) v=v.replace(/(\d{2})(\d{0,5})/,'($1) $2'); else if(v.length>0) v=v.replace(/(\d{0,2})/,'($1'); el.value=v; }
+function fmtData(iso){ if(!iso)return'—'; const[a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
+function hojeISO(){ return new Date().toISOString().slice(0,10); }
+function addDias(iso,dias){ const[a,m,d]=iso.split('-').map(Number); const dt=new Date(a,m-1,d); dt.setDate(dt.getDate()+dias); return dt.toISOString().slice(0,10); }
+function diasEntre(iso1,iso2){ const[a,m,d]=iso1.split('-').map(Number),[a2,m2,d2]=iso2.split('-').map(Number); return Math.round((new Date(a2,m2-1,d2)-new Date(a,m-1,d))/86400000); }
+function escapar(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function arquivoSelecionado(input,dropId){ const drop=document.getElementById(dropId),txt=document.getElementById(dropId+'Txt'); if(input.files[0]){ drop.classList.add('tem'); txt.textContent='📎 '+input.files[0].name; } else { drop.classList.remove('tem'); } }
+
+/* ============ Navegação ============ */
+function mostrarTela(nome,btn){
+  document.querySelectorAll('.tela').forEach(t=>t.classList.remove('ativo'));
+  document.getElementById('tela-'+nome).classList.add('ativo');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  if(nome==='entrevistas'){ carregarSelectCandidatos('entrCand'); renderEntrevistas(); }
+  if(nome==='contratacoes'){ carregarSelectCandidatos('contrCand'); renderContratacoes(); }
+}
+
+/* ============ Candidatos ============ */
+async function salvarCandidato(e){
+  e.preventDefault();
+  const id=document.getElementById('candId').value;
+  const nome=document.getElementById('candNome').value.trim();
+  const tel=document.getElementById('candTel').value.trim();
+  const arq=document.getElementById('candCurriculo').files[0];
+  if(!nome||!tel){ toast('Preencha nome e telefone','erro'); return; }
+  let obj={nome,telefone:tel,criadoEm:hojeISO()};
+  if(id){ const ex=await getOne('candidatos',Number(id)); obj={...ex,nome,telefone:tel}; }
+  if(arq){ obj.curriculo=arq; obj.curriculoNome=arq.name; }
+  if(id) obj.id=Number(id);
+  await put('candidatos',obj);
+  toast(id?'Candidato atualizado!':'Candidato cadastrado!');
+  resetForm('candidato');
+  renderCandidatos();
+}
+async function renderCandidatos(){
+  const busca=(document.getElementById('buscaCand').value||'').toLowerCase();
+  let lista=await getAll('candidatos');
+  lista.sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(busca) lista=lista.filter(c=>c.nome.toLowerCase().includes(busca)||c.telefone.includes(busca));
+  // stats
+  const todos=await getAll('candidatos'), entrevistas=await getAll('entrevistas'), contr=await getAll('contratacoes');
+  document.getElementById('statsCandidatos').innerHTML=`
+    <div class="stat"><div class="n">${todos.length}</div><div class="l">Candidatos</div></div>
+    <div class="stat"><div class="n">${entrevistas.length}</div><div class="l">Entrevistas</div></div>
+    <div class="stat"><div class="n">${contr.length}</div><div class="l">Contratações</div></div>`;
+  const el=document.getElementById('listaCandidatos');
+  if(!lista.length){ el.innerHTML=vazio('Nenhum candidato cadastrado'); return; }
+  el.innerHTML=`<table><thead><tr><th>Nome</th><th>Telefone</th><th>Currículo</th><th>Ações</th></tr></thead><tbody>`+
+    lista.map(c=>`<tr>
+      <td><b>${escapar(c.nome)}</b></td>
+      <td>${escapar(c.telefone)}</td>
+      <td>${c.curriculo?`<span class="link" onclick="abrirArquivo('candidatos',${c.id},'curriculo')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>PDF</span>`:'<span class="badge cinza">sem PDF</span>'}</td>
+      <td><div class="acoes-linha">
+        <button class="btn sec mini" onclick="editarCandidato(${c.id})">Editar</button>
+        <button class="btn danger mini" onclick="excluir('candidatos',${c.id},'Candidato')">Excluir</button>
+      </div></td></tr>`).join('')+`</tbody></table>`;
+}
+async function editarCandidato(id){
+  const c=await getOne('candidatos',id);
+  document.getElementById('candId').value=c.id;
+  document.getElementById('candNome').value=c.nome;
+  document.getElementById('candTel').value=c.telefone;
+  document.getElementById('tituloFormCand').textContent='Editar Candidato';
+  document.getElementById('btnCandTxt').textContent='Atualizar Candidato';
+  document.getElementById('btnCancelCand').style.display='flex';
+  const txt=document.getElementById('dropCandTxt');
+  txt.textContent=c.curriculoNome?('📎 '+c.curriculoNome+' (deixe vazio p/ manter)'):'Clique para anexar o PDF do currículo';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============ Entrevistas ============ */
+async function carregarSelectCandidatos(selId){
+  const sel=document.getElementById(selId);
+  const atual=sel.value;
+  const lista=(await getAll('candidatos')).sort((a,b)=>a.nome.localeCompare(b.nome));
+  sel.innerHTML='<option value="">Selecione o candidato</option>'+lista.map(c=>`<option value="${c.id}">${escapar(c.nome)}</option>`).join('');
+  sel.value=atual;
+}
+async function salvarEntrevista(e){
+  e.preventDefault();
+  const id=document.getElementById('entrId').value;
+  const candId=Number(document.getElementById('entrCand').value);
+  const data=document.getElementById('entrData').value;
+  const situacao=document.getElementById('entrSituacao').value;
+  const andamento=document.getElementById('entrAndamento').value.trim();
+  const arq=document.getElementById('entrFormulario').files[0];
+  if(!candId||!data||!andamento){ toast('Preencha candidato, data e andamento','erro'); return; }
+  let obj={candId,data,situacao,andamento,criadoEm:hojeISO()};
+  if(id){ const ex=await getOne('entrevistas',Number(id)); obj={...ex,candId,data,situacao,andamento}; obj.id=Number(id); }
+  if(arq){ obj.formulario=arq; obj.formularioNome=arq.name; }
+  await put('entrevistas',obj);
+  toast(id?'Entrevista atualizada!':'Entrevista registrada!');
+  resetForm('entrevista');
+  renderEntrevistas();
+}
+function corSituacao(s){ return {'Aprovado':'verde','Reprovado':'vermelho','Realizada':'azul','Em análise':'amarelo','Agendada':'cinza'}[s]||'cinza'; }
+async function renderEntrevistas(){
+  const busca=(document.getElementById('buscaEntr').value||'').toLowerCase();
+  const cands=await getAll('candidatos'); const mapa={}; cands.forEach(c=>mapa[c.id]=c.nome);
+  let lista=await getAll('entrevistas');
+  lista.sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  if(busca) lista=lista.filter(e=>(mapa[e.candId]||'').toLowerCase().includes(busca));
+  const el=document.getElementById('listaEntrevistas');
+  if(!lista.length){ el.innerHTML=vazio('Nenhuma entrevista registrada'); return; }
+  el.innerHTML=`<table><thead><tr><th>Candidato</th><th>Data</th><th>Situação</th><th>Anexo</th><th>Ações</th></tr></thead><tbody>`+
+    lista.map(e=>`<tr>
+      <td><b>${escapar(mapa[e.candId]||'(candidato removido)')}</b></td>
+      <td>${fmtData(e.data)}</td>
+      <td><span class="badge ${corSituacao(e.situacao)}">${escapar(e.situacao||'—')}</span></td>
+      <td>${e.formulario?`<span class="link" onclick="abrirArquivo('entrevistas',${e.id},'formulario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Ver</span>`:'<span class="badge cinza">—</span>'}</td>
+      <td><div class="acoes-linha">
+        <button class="btn sec mini" onclick="verEntrevista(${e.id})">Detalhes</button>
+        <button class="btn sec mini" onclick="editarEntrevista(${e.id})">Editar</button>
+        <button class="btn danger mini" onclick="excluir('entrevistas',${e.id},'Entrevista')">Excluir</button>
+      </div></td></tr>`).join('')+`</tbody></table>`;
+}
+async function verEntrevista(id){
+  const e=await getOne('entrevistas',id); const c=await getOne('candidatos',e.candId);
+  document.getElementById('modalTitulo').textContent='Detalhes da Entrevista';
+  document.getElementById('modalBody').innerHTML=`
+    <div class="info-row"><div class="k">Candidato</div><div class="v">${escapar(c?c.nome:'(removido)')}</div></div>
+    <div class="info-row"><div class="k">Telefone</div><div class="v">${escapar(c?c.telefone:'—')}</div></div>
+    <div class="info-row"><div class="k">Data</div><div class="v">${fmtData(e.data)}</div></div>
+    <div class="info-row"><div class="k">Situação</div><div class="v"><span class="badge ${corSituacao(e.situacao)}">${escapar(e.situacao||'—')}</span></div></div>
+    <div class="info-row"><div class="k">Andamento</div><div class="v" style="white-space:pre-wrap">${escapar(e.andamento)}</div></div>
+    ${e.formulario?`<div class="info-row"><div class="k">Formulário</div><div class="v"><span class="link" onclick="abrirArquivo('entrevistas',${e.id},'formulario')">${escapar(e.formularioNome||'abrir anexo')}</span></div></div>`:''}`;
+  document.getElementById('modalBg').classList.add('ativo');
+}
+async function editarEntrevista(id){
+  const e=await getOne('entrevistas',id);
+  await carregarSelectCandidatos('entrCand');
+  document.getElementById('entrId').value=e.id;
+  document.getElementById('entrCand').value=e.candId;
+  document.getElementById('entrData').value=e.data;
+  document.getElementById('entrSituacao').value=e.situacao||'Agendada';
+  document.getElementById('entrAndamento').value=e.andamento||'';
+  document.getElementById('tituloFormEntr').textContent='Editar Entrevista';
+  document.getElementById('btnEntrTxt').textContent='Atualizar Entrevista';
+  document.getElementById('btnCancelEntr').style.display='flex';
+  document.getElementById('dropEntrTxt').textContent=e.formularioNome?('📎 '+e.formularioNome+' (deixe vazio p/ manter)'):'Clique para anexar o formulário';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============ Contratação ============ */
+function calcularVencimentos(){
+  const adm=document.getElementById('contrAdmissao').value;
+  const prazo=Number(document.getElementById('contrExperiencia').value);
+  const box=document.getElementById('vencBox');
+  if(!adm){ box.style.display='none'; return null; }
+  const fim1=addDias(adm,prazo-1);      // fim do 1º período (dia da admissão conta como 1º dia)
+  const inicio2=addDias(fim1,1);         // início da prorrogação
+  const fimFinal=addDias(fim1,prazo);    // fim do contrato de experiência (total)
+  const totalDias=diasEntre(adm,fimFinal)+1;
+  box.style.display='block';
+  document.getElementById('vencConteudo').innerHTML=`
+    <div class="venc-linha"><span>1º período (${prazo} dias)</span><b>${fmtData(adm)} → ${fmtData(fim1)}</b></div>
+    <div class="venc-linha"><span>Prorrogação — 2º período (${prazo} dias)</span><b>${fmtData(inicio2)} → ${fmtData(fimFinal)}</b></div>
+    <div class="venc-linha venc-final"><span>Vencimento final da experiência</span><b>${fmtData(fimFinal)} (${totalDias} dias)</b></div>`;
+  return {fim1,inicio2,fimFinal};
+}
+async function salvarContratacao(e){
+  e.preventDefault();
+  const id=document.getElementById('contrId').value;
+  const candId=Number(document.getElementById('contrCand').value);
+  const depto=document.getElementById('contrDepto').value.trim();
+  const adm=document.getElementById('contrAdmissao').value;
+  const prazo=Number(document.getElementById('contrExperiencia').value);
+  if(!candId||!depto||!adm){ toast('Preencha candidato, departamento e admissão','erro'); return; }
+  const v=calcularVencimentos();
+  let obj={candId,departamento:depto,admissao:adm,prazo,fim1:v.fim1,inicio2:v.inicio2,fimFinal:v.fimFinal,criadoEm:hojeISO()};
+  if(id) obj.id=Number(id);
+  await put('contratacoes',obj);
+  toast(id?'Contratação atualizada!':'Contratação registrada!');
+  resetForm('contratacao');
+  renderContratacoes();
+}
+function statusExperiencia(fimFinal){
+  const d=diasEntre(hojeISO(),fimFinal);
+  if(d<0) return {t:'Encerrada',c:'cinza'};
+  if(d<=15) return {t:`Vence em ${d}d`,c:'vermelho'};
+  if(d<=30) return {t:`Vence em ${d}d`,c:'amarelo'};
+  return {t:`Vence em ${d}d`,c:'verde'};
+}
+async function renderContratacoes(){
+  const busca=(document.getElementById('buscaContr').value||'').toLowerCase();
+  const cands=await getAll('candidatos'); const mapa={}; cands.forEach(c=>mapa[c.id]=c.nome);
+  let lista=await getAll('contratacoes');
+  lista.sort((a,b)=>(a.fimFinal||'').localeCompare(b.fimFinal||''));
+  if(busca) lista=lista.filter(c=>(mapa[c.candId]||'').toLowerCase().includes(busca)||(c.departamento||'').toLowerCase().includes(busca));
+  const el=document.getElementById('listaContratacoes');
+  if(!lista.length){ el.innerHTML=vazio('Nenhuma contratação registrada'); return; }
+  el.innerHTML=`<table><thead><tr><th>Candidato</th><th>Depto</th><th>Admissão</th><th>1º venc.</th><th>Venc. final</th><th>Status</th><th></th></tr></thead><tbody>`+
+    lista.map(c=>{ const s=statusExperiencia(c.fimFinal); return `<tr>
+      <td><b>${escapar(mapa[c.candId]||'(removido)')}</b></td>
+      <td>${escapar(c.departamento)}</td>
+      <td>${fmtData(c.admissao)}</td>
+      <td>${fmtData(c.fim1)}</td>
+      <td><b>${fmtData(c.fimFinal)}</b></td>
+      <td><span class="badge ${s.c}">${s.t}</span></td>
+      <td><div class="acoes-linha">
+        <button class="btn sec mini" onclick="verContratacao(${c.id})">Ver</button>
+        <button class="btn sec mini" onclick="editarContratacao(${c.id})">Editar</button>
+        <button class="btn danger mini" onclick="excluir('contratacoes',${c.id},'Contratação')">Excluir</button>
+      </div></td></tr>`;}).join('')+`</tbody></table>`;
+}
+async function verContratacao(id){
+  const c=await getOne('contratacoes',id); const cand=await getOne('candidatos',c.candId);
+  document.getElementById('modalTitulo').textContent='Detalhes da Contratação';
+  document.getElementById('modalBody').innerHTML=`
+    <div class="info-row"><div class="k">Candidato</div><div class="v">${escapar(cand?cand.nome:'(removido)')}</div></div>
+    <div class="info-row"><div class="k">Departamento</div><div class="v">${escapar(c.departamento)}</div></div>
+    <div class="info-row"><div class="k">Data de admissão</div><div class="v">${fmtData(c.admissao)}</div></div>
+    <div class="info-row"><div class="k">Modalidade</div><div class="v">${c.prazo}+${c.prazo} dias</div></div>
+    <div class="info-row"><div class="k">1º período</div><div class="v">${fmtData(c.admissao)} → ${fmtData(c.fim1)}</div></div>
+    <div class="info-row"><div class="k">2º período</div><div class="v">${fmtData(c.inicio2)} → ${fmtData(c.fimFinal)}</div></div>
+    <div class="info-row"><div class="k">Vencimento final</div><div class="v"><b>${fmtData(c.fimFinal)}</b></div></div>`;
+  document.getElementById('modalBg').classList.add('ativo');
+}
+async function editarContratacao(id){
+  const c=await getOne('contratacoes',id);
+  await carregarSelectCandidatos('contrCand');
+  document.getElementById('contrId').value=c.id;
+  document.getElementById('contrCand').value=c.candId;
+  document.getElementById('contrDepto').value=c.departamento;
+  document.getElementById('contrAdmissao').value=c.admissao;
+  document.getElementById('contrExperiencia').value=c.prazo;
+  calcularVencimentos();
+  document.getElementById('tituloFormContr').textContent='Editar Contratação';
+  document.getElementById('btnContrTxt').textContent='Atualizar Contratação';
+  document.getElementById('btnCancelContr').style.display='flex';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ============ Comuns ============ */
+function vazio(msg){ return `<div class="vazio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div>${msg}</div></div>`; }
+async function abrirArquivo(store,id,campo){
+  const obj=await getOne(store,id);
+  const blob=obj[campo];
+  if(!blob){ toast('Arquivo não encontrado','erro'); return; }
+  const url=URL.createObjectURL(blob);
+  window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+async function excluir(store,id,rotulo){
+  if(!confirm(`Excluir ${rotulo}? Esta ação não pode ser desfeita.`)) return;
+  await del(store,id);
+  toast(rotulo+' excluído','ok');
+  if(store==='candidatos') renderCandidatos();
+  if(store==='entrevistas') renderEntrevistas();
+  if(store==='contratacoes') renderContratacoes();
+}
+function resetForm(tipo){
+  if(tipo==='candidato'){
+    document.getElementById('formCandidato').reset(); document.getElementById('candId').value='';
+    document.getElementById('tituloFormCand').textContent='Novo Candidato';
+    document.getElementById('btnCandTxt').textContent='Salvar Candidato';
+    document.getElementById('btnCancelCand').style.display='none';
+    document.getElementById('dropCand').classList.remove('tem');
+    document.getElementById('dropCandTxt').textContent='Clique para anexar o PDF do currículo';
+  }
+  if(tipo==='entrevista'){
+    document.getElementById('formEntrevista').reset(); document.getElementById('entrId').value='';
+    document.getElementById('tituloFormEntr').textContent='Nova Entrevista';
+    document.getElementById('btnEntrTxt').textContent='Salvar Entrevista';
+    document.getElementById('btnCancelEntr').style.display='none';
+    document.getElementById('dropEntr').classList.remove('tem');
+    document.getElementById('dropEntrTxt').textContent='Clique para anexar o formulário';
+  }
+  if(tipo==='contratacao'){
+    document.getElementById('formContratacao').reset(); document.getElementById('contrId').value='';
+    document.getElementById('tituloFormContr').textContent='Nova Contratação';
+    document.getElementById('btnContrTxt').textContent='Salvar Contratação';
+    document.getElementById('btnCancelContr').style.display='none';
+    document.getElementById('vencBox').style.display='none';
+  }
+}
+function fecharModal(){ document.getElementById('modalBg').classList.remove('ativo'); }
+
+/* ============ Backup / Restauração ============ */
+function blobParaBase64(blob){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(blob); }); }
+function base64ParaBlob(dataURL){ const[cab,dados]=dataURL.split(','); const mime=cab.match(/:(.*?);/)[1]; const bin=atob(dados); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:mime}); }
+
+async function exportarBackup(){
+  const dados={versao:1,gerado:new Date().toISOString(),candidatos:[],entrevistas:[],contratacoes:[]};
+  for(const c of await getAll('candidatos')){ const o={...c}; if(c.curriculo) o.curriculo=await blobParaBase64(c.curriculo); dados.candidatos.push(o); }
+  for(const e of await getAll('entrevistas')){ const o={...e}; if(e.formulario) o.formulario=await blobParaBase64(e.formulario); dados.entrevistas.push(o); }
+  dados.contratacoes=await getAll('contratacoes');
+  const blob=new Blob([JSON.stringify(dados)],{type:'application/json'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=`backup-rh-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(url);
+  toast('Backup gerado com sucesso!');
+}
+async function importarBackup(input){
+  const file=input.files[0]; if(!file) return;
+  if(!confirm('Restaurar backup? Os dados atuais serão SUBSTITUÍDOS pelos do arquivo.')){ input.value=''; return; }
+  try{
+    const dados=JSON.parse(await file.text());
+    for(const s of STORES){ const store=db.transaction(s,'readwrite').objectStore(s); await new Promise(r=>{store.clear().onsuccess=r;}); }
+    for(const c of dados.candidatos||[]){ if(typeof c.curriculo==='string') c.curriculo=base64ParaBlob(c.curriculo); await put('candidatos',c); }
+    for(const e of dados.entrevistas||[]){ if(typeof e.formulario==='string') e.formulario=base64ParaBlob(e.formulario); await put('entrevistas',e); }
+    for(const c of dados.contratacoes||[]){ await put('contratacoes',c); }
+    toast('Backup restaurado!'); renderCandidatos();
+  }catch(err){ toast('Arquivo de backup inválido','erro'); }
+  input.value='';
+}
+
+/* ============ Início ============ */
+(async function(){
+  await abrirDB();
+  renderCandidatos();
+  document.getElementById('entrData').value=hojeISO();
+  document.getElementById('contrAdmissao').value=hojeISO();
+})();
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharModal(); });
+</script>
+</body>
+</html>
