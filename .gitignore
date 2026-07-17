@@ -1,6 +1,12 @@
 # Configuração local do Claude Code
 .claude/
 
+# Configuração local com a SENHA do banco — nunca versionar
+config.json
+
+# Log do servidor (gerado em runtime)
+servidor.log
+
 # Sistema operacional
 Thumbs.db
 Desktop.ini

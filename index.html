@@ -276,27 +276,28 @@
 <div class="toast" id="toast"></div>
 
 <script>
-/* ============ Banco de dados (IndexedDB) ============ */
-let db;
-const DB_NOME='sistema_rh', DB_VER=1;
+/* ============ Banco de dados (API / MySQL) ============ */
 const STORES=['candidatos','entrevistas','contratacoes'];
 
-function abrirDB(){
-  return new Promise((res,rej)=>{
-    const req=indexedDB.open(DB_NOME,DB_VER);
-    req.onupgradeneeded=e=>{
-      const d=e.target.result;
-      STORES.forEach(s=>{ if(!d.objectStoreNames.contains(s)) d.createObjectStore(s,{keyPath:'id',autoIncrement:true}); });
-    };
-    req.onsuccess=e=>{db=e.target.result;res()};
-    req.onerror=e=>rej(e.target.error);
-  });
+async function apiFetch(url,opts){
+  const r=await fetch(url,opts);
+  if(!r.ok){ let m='Erro no servidor'; try{ m=(await r.json()).erro||m; }catch(_){} throw new Error(m); }
+  return r;
 }
-function tx(store,modo='readonly'){ return db.transaction(store,modo).objectStore(store); }
-function getAll(store){ return new Promise((res,rej)=>{ const r=tx(store).getAll(); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function getOne(store,id){ return new Promise((res,rej)=>{ const r=tx(store).get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function put(store,obj){ return new Promise((res,rej)=>{ const r=tx(store,'readwrite').put(obj); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-function del(store,id){ return new Promise((res,rej)=>{ const r=tx(store,'readwrite').delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+// Lista (sem os anexos; campos de arquivo vêm como true/false indicando se existe)
+async function getAll(store){ return (await apiFetch('/api/'+store)).json(); }
+// Registro completo (anexos vêm como data URL base64)
+async function getOne(store,id){ return (await apiFetch('/api/'+store+'/'+id)).json(); }
+// Cria (sem id) ou atualiza (com id). Arquivos File/Blob são convertidos p/ base64.
+async function put(store,obj){
+  const body={...obj};
+  for(const campo of ['curriculo','formulario']){ if(body[campo] instanceof Blob){ body[campo]=await blobParaBase64(body[campo]); } }
+  const id=body.id;
+  const url='/api/'+store+(id?('/'+id):'');
+  const r=await apiFetch(url,{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return (await r.json()).id;
+}
+async function del(store,id){ await apiFetch('/api/'+store+'/'+id,{method:'DELETE'}); }
 
 /* ============ Utilidades ============ */
 function toast(msg,tipo='ok'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show '+tipo; setTimeout(()=>t.className='toast',2600); }
@@ -315,7 +316,7 @@ function mostrarTela(nome,btn){
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('ativo'));
   btn.classList.add('ativo');
   if(nome==='entrevistas'){ carregarSelectCandidatos('entrCand'); renderEntrevistas(); }
-  if(nome==='contratacoes'){ carregarSelectCandidatos('contrCand'); renderContratacoes(); }
+  if(nome==='contratacoes'){ carregarSelectCandidatos('contrCand',{somenteAprovados:true}); renderContratacoes(); }
 }
 
 /* ============ Candidatos ============ */
@@ -326,14 +327,16 @@ async function salvarCandidato(e){
   const tel=document.getElementById('candTel').value.trim();
   const arq=document.getElementById('candCurriculo').files[0];
   if(!nome||!tel){ toast('Preencha nome e telefone','erro'); return; }
-  let obj={nome,telefone:tel,criadoEm:hojeISO()};
-  if(id){ const ex=await getOne('candidatos',Number(id)); obj={...ex,nome,telefone:tel}; }
+  let obj={nome,telefone:tel};
+  if(!id) obj.criadoEm=hojeISO();
   if(arq){ obj.curriculo=arq; obj.curriculoNome=arq.name; }
   if(id) obj.id=Number(id);
-  await put('candidatos',obj);
-  toast(id?'Candidato atualizado!':'Candidato cadastrado!');
-  resetForm('candidato');
-  renderCandidatos();
+  try{
+    await put('candidatos',obj);
+    toast(id?'Candidato atualizado!':'Candidato cadastrado!');
+    resetForm('candidato');
+    renderCandidatos();
+  }catch(err){ toast('Erro ao salvar: '+err.message,'erro'); }
 }
 async function renderCandidatos(){
   const busca=(document.getElementById('buscaCand').value||'').toLowerCase();
@@ -372,11 +375,25 @@ async function editarCandidato(id){
 }
 
 /* ============ Entrevistas ============ */
-async function carregarSelectCandidatos(selId){
+// Candidatos com pelo menos uma entrevista com situação "Aprovado"
+async function idsAprovados(){
+  const entrevistas=await getAll('entrevistas');
+  return new Set(entrevistas.filter(e=>e.situacao==='Aprovado').map(e=>e.candId));
+}
+// somenteAprovados: usado na tela de Contratação (só se contrata quem foi aprovado).
+// incluirId: mantém na lista o candidato já vinculado ao registro em edição,
+//            mesmo que a situação dele tenha mudado depois.
+async function carregarSelectCandidatos(selId,{somenteAprovados=false,incluirId=null}={}){
   const sel=document.getElementById(selId);
   const atual=sel.value;
-  const lista=(await getAll('candidatos')).sort((a,b)=>a.nome.localeCompare(b.nome));
-  sel.innerHTML='<option value="">Selecione o candidato</option>'+lista.map(c=>`<option value="${c.id}">${escapar(c.nome)}</option>`).join('');
+  let lista=(await getAll('candidatos')).sort((a,b)=>a.nome.localeCompare(b.nome));
+  if(somenteAprovados){
+    const aprovados=await idsAprovados();
+    lista=lista.filter(c=>aprovados.has(c.id)||c.id===incluirId);
+  }
+  const vazio=somenteAprovados&&!lista.length;
+  const placeholder=vazio?'Nenhum candidato aprovado em entrevista':'Selecione o candidato';
+  sel.innerHTML=`<option value="">${placeholder}</option>`+lista.map(c=>`<option value="${c.id}">${escapar(c.nome)}</option>`).join('');
   sel.value=atual;
 }
 async function salvarEntrevista(e){
@@ -388,13 +405,16 @@ async function salvarEntrevista(e){
   const andamento=document.getElementById('entrAndamento').value.trim();
   const arq=document.getElementById('entrFormulario').files[0];
   if(!candId||!data||!andamento){ toast('Preencha candidato, data e andamento','erro'); return; }
-  let obj={candId,data,situacao,andamento,criadoEm:hojeISO()};
-  if(id){ const ex=await getOne('entrevistas',Number(id)); obj={...ex,candId,data,situacao,andamento}; obj.id=Number(id); }
+  let obj={candId,data,situacao,andamento};
+  if(!id) obj.criadoEm=hojeISO();
+  if(id) obj.id=Number(id);
   if(arq){ obj.formulario=arq; obj.formularioNome=arq.name; }
-  await put('entrevistas',obj);
-  toast(id?'Entrevista atualizada!':'Entrevista registrada!');
-  resetForm('entrevista');
-  renderEntrevistas();
+  try{
+    await put('entrevistas',obj);
+    toast(id?'Entrevista atualizada!':'Entrevista registrada!');
+    resetForm('entrevista');
+    renderEntrevistas();
+  }catch(err){ toast('Erro ao salvar: '+err.message,'erro'); }
 }
 function corSituacao(s){ return {'Aprovado':'verde','Reprovado':'vermelho','Realizada':'azul','Em análise':'amarelo','Agendada':'cinza'}[s]||'cinza'; }
 async function renderEntrevistas(){
@@ -470,12 +490,15 @@ async function salvarContratacao(e){
   const prazo=Number(document.getElementById('contrExperiencia').value);
   if(!candId||!depto||!adm){ toast('Preencha candidato, departamento e admissão','erro'); return; }
   const v=calcularVencimentos();
-  let obj={candId,departamento:depto,admissao:adm,prazo,fim1:v.fim1,inicio2:v.inicio2,fimFinal:v.fimFinal,criadoEm:hojeISO()};
+  let obj={candId,departamento:depto,admissao:adm,prazo,fim1:v.fim1,inicio2:v.inicio2,fimFinal:v.fimFinal};
+  if(!id) obj.criadoEm=hojeISO();
   if(id) obj.id=Number(id);
-  await put('contratacoes',obj);
-  toast(id?'Contratação atualizada!':'Contratação registrada!');
-  resetForm('contratacao');
-  renderContratacoes();
+  try{
+    await put('contratacoes',obj);
+    toast(id?'Contratação atualizada!':'Contratação registrada!');
+    resetForm('contratacao');
+    renderContratacoes();
+  }catch(err){ toast('Erro ao salvar: '+err.message,'erro'); }
 }
 function statusExperiencia(fimFinal){
   const d=diasEntre(hojeISO(),fimFinal);
@@ -521,7 +544,7 @@ async function verContratacao(id){
 }
 async function editarContratacao(id){
   const c=await getOne('contratacoes',id);
-  await carregarSelectCandidatos('contrCand');
+  await carregarSelectCandidatos('contrCand',{somenteAprovados:true,incluirId:c.candId});
   document.getElementById('contrId').value=c.id;
   document.getElementById('contrCand').value=c.candId;
   document.getElementById('contrDepto').value=c.departamento;
@@ -538,8 +561,9 @@ async function editarContratacao(id){
 function vazio(msg){ return `<div class="vazio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div>${msg}</div></div>`; }
 async function abrirArquivo(store,id,campo){
   const obj=await getOne(store,id);
-  const blob=obj[campo];
-  if(!blob){ toast('Arquivo não encontrado','erro'); return; }
+  const dataURL=obj[campo];
+  if(!dataURL){ toast('Arquivo não encontrado','erro'); return; }
+  const blob=(typeof dataURL==='string'&&dataURL.startsWith('data:'))?base64ParaBlob(dataURL):dataURL;
   const url=URL.createObjectURL(blob);
   window.open(url,'_blank');
   setTimeout(()=>URL.revokeObjectURL(url),60000);
@@ -584,35 +608,35 @@ function blobParaBase64(blob){ return new Promise(res=>{ const r=new FileReader(
 function base64ParaBlob(dataURL){ const[cab,dados]=dataURL.split(','); const mime=cab.match(/:(.*?);/)[1]; const bin=atob(dados); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:mime}); }
 
 async function exportarBackup(){
-  const dados={versao:1,gerado:new Date().toISOString(),candidatos:[],entrevistas:[],contratacoes:[]};
-  for(const c of await getAll('candidatos')){ const o={...c}; if(c.curriculo) o.curriculo=await blobParaBase64(c.curriculo); dados.candidatos.push(o); }
-  for(const e of await getAll('entrevistas')){ const o={...e}; if(e.formulario) o.formulario=await blobParaBase64(e.formulario); dados.entrevistas.push(o); }
-  dados.contratacoes=await getAll('contratacoes');
-  const blob=new Blob([JSON.stringify(dados)],{type:'application/json'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a');
-  a.href=url; a.download=`backup-rh-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(url);
-  toast('Backup gerado com sucesso!');
+  try{
+    const dados=await (await apiFetch('/api/backup')).json();
+    const blob=new Blob([JSON.stringify(dados)],{type:'application/json'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=`backup-rh-${hojeISO()}.json`; a.click(); URL.revokeObjectURL(url);
+    toast('Backup gerado com sucesso!');
+  }catch(err){ toast('Erro ao gerar backup: '+err.message,'erro'); }
 }
 async function importarBackup(input){
   const file=input.files[0]; if(!file) return;
   if(!confirm('Restaurar backup? Os dados atuais serão SUBSTITUÍDOS pelos do arquivo.')){ input.value=''; return; }
   try{
     const dados=JSON.parse(await file.text());
-    for(const s of STORES){ const store=db.transaction(s,'readwrite').objectStore(s); await new Promise(r=>{store.clear().onsuccess=r;}); }
-    for(const c of dados.candidatos||[]){ if(typeof c.curriculo==='string') c.curriculo=base64ParaBlob(c.curriculo); await put('candidatos',c); }
-    for(const e of dados.entrevistas||[]){ if(typeof e.formulario==='string') e.formulario=base64ParaBlob(e.formulario); await put('entrevistas',e); }
-    for(const c of dados.contratacoes||[]){ await put('contratacoes',c); }
+    await apiFetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(dados)});
     toast('Backup restaurado!'); renderCandidatos();
-  }catch(err){ toast('Arquivo de backup inválido','erro'); }
+  }catch(err){ toast('Falha ao restaurar: '+err.message,'erro'); }
   input.value='';
 }
 
 /* ============ Início ============ */
 (async function(){
-  await abrirDB();
-  renderCandidatos();
   document.getElementById('entrData').value=hojeISO();
   document.getElementById('contrAdmissao').value=hojeISO();
+  try{
+    await renderCandidatos();
+  }catch(err){
+    document.getElementById('listaCandidatos').innerHTML=vazio('Não foi possível conectar ao servidor. Verifique se o server.py está rodando.');
+    toast('Servidor offline','erro');
+  }
 })();
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharModal(); });
 </script>

@@ -1,0 +1,14 @@
+{
+  "_leia": "Copie este arquivo para config.json e coloque a senha do seu MySQL no campo password.",
+  "mysql": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "",
+    "database": "sistema_rh"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8080
+  }
+}
