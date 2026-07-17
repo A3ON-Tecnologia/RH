@@ -97,6 +97,15 @@
   .stat .n{font-size:28px;font-weight:700;color:var(--azul)}
   .stat .l{color:var(--cinza);font-size:13px;margin-top:2px}
   .hint{font-size:12px;color:var(--cinza);margin-top:4px}
+  /* Login */
+  .login-bg{position:fixed;inset:0;background:linear-gradient(135deg,var(--azul),#1e3a8a);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:#fff;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.3);padding:32px 28px;width:100%;max-width:380px}
+  .login-logo{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;color:var(--azul);justify-content:center;margin-bottom:6px}
+  .login-logo svg{width:28px;height:28px}
+  .login-sub{text-align:center;color:var(--cinza);font-size:13px;margin-bottom:20px}
+  .login-erro{color:var(--vermelho);font-size:13px;font-weight:600;margin-top:12px;min-height:18px;text-align:center}
+  .usuario-atual{display:flex;align-items:center;gap:8px}
+  .usuario-atual svg{width:16px;height:16px;opacity:.85}
 </style>
 </head>
 <body>
@@ -115,6 +124,11 @@
       Restaurar
     </button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarBackup(this)">
+    <span id="usuarioLogado" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:0 4px"></span>
+    <button onclick="sair()" title="Sair do sistema">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sair
+    </button>
   </div>
 </header>
 
@@ -122,6 +136,7 @@
   <button class="ativo" data-tela="candidatos" onclick="mostrarTela('candidatos',this)">Candidatos</button>
   <button data-tela="entrevistas" onclick="mostrarTela('entrevistas',this)">Entrevistas</button>
   <button data-tela="contratacoes" onclick="mostrarTela('contratacoes',this)">Contratação</button>
+  <button data-tela="usuarios" onclick="mostrarTela('usuarios',this)">Usuários</button>
 </nav>
 
 <main>
@@ -260,7 +275,59 @@
       </div>
     </div>
   </section>
+
+  <!-- ===================== USUÁRIOS ===================== -->
+  <section class="tela" id="tela-usuarios">
+    <div class="grid">
+      <div class="card">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Novo Usuário
+        </h3>
+        <form id="formUsuario" onsubmit="salvarUsuario(event)">
+          <label>Nome de usuário <span class="req">*</span></label>
+          <input type="text" id="usuNome" required placeholder="ex.: joao.silva" autocomplete="off">
+          <label>Senha <span class="req">*</span></label>
+          <input type="password" id="usuSenha" required placeholder="mínimo 4 caracteres" autocomplete="new-password">
+          <label>Confirmar senha <span class="req">*</span></label>
+          <input type="password" id="usuSenha2" required placeholder="repita a senha" autocomplete="new-password">
+          <div class="hint">Qualquer usuário logado pode cadastrar novos usuários.</div>
+          <div class="btn" style="display:flex" onclick="document.getElementById('formUsuario').requestSubmit()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Cadastrar Usuário
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <div class="toolbar"><b style="color:var(--cinza)">Usuários do sistema</b></div>
+        <div id="listaUsuarios"></div>
+      </div>
+    </div>
+  </section>
 </main>
+
+<!-- ===================== LOGIN (sobreposição) ===================== -->
+<div class="login-bg" id="loginBg">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Sistema de RH
+    </div>
+    <p class="login-sub" id="loginSub">Entre com seu usuário e senha</p>
+    <form id="formLogin" onsubmit="fazerLogin(event)">
+      <label>Usuário</label>
+      <input type="text" id="loginUsuario" required autocomplete="username" placeholder="Seu usuário">
+      <label>Senha</label>
+      <input type="password" id="loginSenha" required autocomplete="current-password" placeholder="Sua senha">
+      <div id="loginSenha2Box" style="display:none">
+        <label>Confirmar senha</label>
+        <input type="password" id="loginSenha2" autocomplete="new-password" placeholder="Repita a senha">
+      </div>
+      <div class="login-erro" id="loginErro"></div>
+      <button type="submit" class="btn" id="loginBtn" style="margin-top:18px">Entrar</button>
+    </form>
+  </div>
+</div>
 
 <!-- Modal genérico -->
 <div class="modal-bg" id="modalBg" onclick="if(event.target===this)fecharModal()">
@@ -281,6 +348,7 @@ const STORES=['candidatos','entrevistas','contratacoes'];
 
 async function apiFetch(url,opts){
   const r=await fetch(url,opts);
+  if(r.status===401){ mostrarLogin(true); throw new Error('Sessão expirada. Entre novamente.'); }
   if(!r.ok){ let m='Erro no servidor'; try{ m=(await r.json()).erro||m; }catch(_){} throw new Error(m); }
   return r;
 }
@@ -317,6 +385,7 @@ function mostrarTela(nome,btn){
   btn.classList.add('ativo');
   if(nome==='entrevistas'){ carregarSelectCandidatos('entrCand'); renderEntrevistas(); }
   if(nome==='contratacoes'){ carregarSelectCandidatos('contrCand',{somenteAprovados:true}); renderContratacoes(); }
+  if(nome==='usuarios'){ renderUsuarios(); }
 }
 
 /* ============ Candidatos ============ */
@@ -627,13 +696,118 @@ async function importarBackup(input){
   input.value='';
 }
 
+/* ============ Login / Usuários ============ */
+let modoPrimeiroAcesso=false;
+
+function mostrarLogin(expirada){
+  document.getElementById('loginBg').style.display='flex';
+  document.getElementById('loginErro').textContent=expirada?'Sua sessão expirou. Entre novamente.':'';
+  const s2=document.getElementById('loginSenha2Box');
+  if(modoPrimeiroAcesso){
+    document.getElementById('loginSub').textContent='Primeiro acesso: crie o usuário administrador';
+    document.getElementById('loginBtn').textContent='Criar usuário e entrar';
+    s2.style.display='block';
+  }else{
+    document.getElementById('loginSub').textContent='Entre com seu usuário e senha';
+    document.getElementById('loginBtn').textContent='Entrar';
+    s2.style.display='none';
+  }
+  setTimeout(()=>document.getElementById('loginUsuario').focus(),50);
+}
+function esconderLogin(){ document.getElementById('loginBg').style.display='none'; }
+
+async function fazerLogin(e){
+  e.preventDefault();
+  const usuario=document.getElementById('loginUsuario').value.trim();
+  const senha=document.getElementById('loginSenha').value;
+  const erroEl=document.getElementById('loginErro');
+  erroEl.textContent='';
+  try{
+    if(modoPrimeiroAcesso){
+      const senha2=document.getElementById('loginSenha2').value;
+      if(senha!==senha2){ erroEl.textContent='As senhas não conferem.'; return; }
+      const r=await fetch('/api/usuarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario,senha})});
+      if(!r.ok){ erroEl.textContent=(await r.json()).erro||'Não foi possível criar o usuário.'; return; }
+      const j=await r.json(); modoPrimeiroAcesso=false; entrarNoApp(j.usuario);
+    }else{
+      const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario,senha})});
+      if(!r.ok){ erroEl.textContent=(await r.json()).erro||'Falha ao entrar.'; return; }
+      const j=await r.json(); entrarNoApp(j.usuario);
+    }
+  }catch(err){ erroEl.textContent='Erro de conexão com o servidor.'; }
+}
+
+function entrarNoApp(usuario){
+  document.getElementById('formLogin').reset();
+  esconderLogin();
+  document.getElementById('usuarioLogado').innerHTML=
+    `<span class="usuario-atual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${escapar(usuario)}</span>`;
+  renderCandidatos();
+}
+
+async function sair(){
+  if(!confirm('Deseja sair do sistema?')) return;
+  try{ await fetch('/api/logout',{method:'POST'}); }catch(_){}
+  document.getElementById('usuarioLogado').innerHTML='';
+  mostrarLogin(false);
+}
+
+async function renderUsuarios(){
+  const el=document.getElementById('listaUsuarios');
+  let lista;
+  try{ lista=await getAll('usuarios'); }catch(err){ return; }
+  if(!lista.length){ el.innerHTML=vazio('Nenhum usuário cadastrado'); return; }
+  el.innerHTML=`<table><thead><tr><th>Usuário</th><th>Criado em</th><th>Ações</th></tr></thead><tbody>`+
+    lista.map(u=>`<tr>
+      <td><b>${escapar(u.nome)}</b></td>
+      <td>${fmtData(u.criadoEm)}</td>
+      <td><div class="acoes-linha">
+        <button class="btn sec mini" onclick="trocarSenha(${u.id},'${escapar(u.nome)}')">Trocar senha</button>
+        <button class="btn danger mini" onclick="excluirUsuario(${u.id},'${escapar(u.nome)}')">Excluir</button>
+      </div></td></tr>`).join('')+`</tbody></table>`;
+}
+async function salvarUsuario(e){
+  e.preventDefault();
+  const nome=document.getElementById('usuNome').value.trim();
+  const senha=document.getElementById('usuSenha').value;
+  const senha2=document.getElementById('usuSenha2').value;
+  if(senha!==senha2){ toast('As senhas não conferem','erro'); return; }
+  try{
+    await apiFetch('/api/usuarios',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuario:nome,senha})});
+    toast('Usuário cadastrado!');
+    document.getElementById('formUsuario').reset();
+    renderUsuarios();
+  }catch(err){ toast(err.message,'erro'); }
+}
+async function trocarSenha(id,nome){
+  const senha=prompt('Nova senha para "'+nome+'" (mínimo 4 caracteres):');
+  if(senha===null) return;
+  try{
+    await apiFetch('/api/usuarios/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({senha})});
+    toast('Senha alterada!');
+  }catch(err){ toast(err.message,'erro'); }
+}
+async function excluirUsuario(id,nome){
+  if(!confirm('Excluir o usuário "'+nome+'"?')) return;
+  try{
+    await del('usuarios',id);
+    toast('Usuário excluído','ok');
+    renderUsuarios();
+  }catch(err){ toast(err.message,'erro'); }
+}
+
 /* ============ Início ============ */
 (async function(){
   document.getElementById('entrData').value=hojeISO();
   document.getElementById('contrAdmissao').value=hojeISO();
   try{
-    await renderCandidatos();
+    const setup=await (await fetch('/api/setup')).json();
+    if(setup.precisaSetup){ modoPrimeiroAcesso=true; mostrarLogin(false); return; }
+    const me=await fetch('/api/me');
+    if(me.ok){ entrarNoApp((await me.json()).usuario); }
+    else{ mostrarLogin(false); }
   }catch(err){
+    esconderLogin();
     document.getElementById('listaCandidatos').innerHTML=vazio('Não foi possível conectar ao servidor. Verifique se o server.py está rodando.');
     toast('Servidor offline','erro');
   }

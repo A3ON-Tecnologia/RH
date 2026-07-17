@@ -7,6 +7,10 @@ config.json
 # Log do servidor (gerado em runtime)
 servidor.log
 
+# Cache do Python
+__pycache__/
+*.pyc
+
 # Sistema operacional
 Thumbs.db
 Desktop.ini

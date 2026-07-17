@@ -4,7 +4,7 @@
 #  Serve a pagina index.html e expoe uma API que le/grava no MySQL.
 #  Rodar:  python server.py   (ou dois cliques em iniciar-servidor.bat)
 # ============================================================
-import json, base64, os, sys, socket, datetime, time
+import json, base64, os, sys, socket, datetime, time, hashlib, hmac, secrets, http.cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -51,6 +51,44 @@ ORDEM_TABELAS = ["candidatos", "entrevistas", "contratacoes"]
 DATE_COLS = {"data", "admissao", "fim1", "inicio2", "fim_final", "criado_em"}
 INT_COLS = {"cand_id", "prazo"}
 
+# ---------- Login / sessões ----------
+SESSAO_HORAS = 12                 # quanto tempo o login dura sem atividade
+SESSOES = {}                      # token -> {"uid":int, "usuario":str, "expira":float}
+PBKDF2_ITERS = 200000
+
+
+def hash_senha(senha, salt=None):
+    if salt is None:
+        salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", senha.encode("utf-8"), bytes.fromhex(salt), PBKDF2_ITERS)
+    return f"pbkdf2${PBKDF2_ITERS}${salt}${dk.hex()}"
+
+
+def verificar_senha(senha, armazenado):
+    try:
+        _alg, iters, salt, h = armazenado.split("$")
+        dk = hashlib.pbkdf2_hmac("sha256", senha.encode("utf-8"), bytes.fromhex(salt), int(iters))
+        return hmac.compare_digest(dk.hex(), h)
+    except Exception:
+        return False
+
+
+def criar_sessao(uid, nome):
+    token = secrets.token_urlsafe(32)
+    SESSOES[token] = {"uid": uid, "usuario": nome, "expira": time.time() + SESSAO_HORAS * 3600}
+    return token
+
+
+def sessao_valida(token):
+    s = SESSOES.get(token)
+    if not s:
+        return None
+    if s["expira"] < time.time():
+        SESSOES.pop(token, None)
+        return None
+    s["expira"] = time.time() + SESSAO_HORAS * 3600   # renova a cada uso
+    return s
+
 
 # ---------- Banco ----------
 def conectar(autocommit=True):
@@ -73,12 +111,90 @@ def add_col_if_missing(cur, table, col, ddl):
 
 
 def ensure_schema():
-    """Garante as colunas de mime (para reconstruir os anexos)."""
+    """Garante as colunas de mime (anexos) e a tabela de usuarios."""
     conn = conectar()
     try:
         cur = conn.cursor()
         add_col_if_missing(cur, "candidatos", "curriculo_mime", "VARCHAR(120) NULL")
         add_col_if_missing(cur, "entrevistas", "formulario_mime", "VARCHAR(120) NULL")
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS usuarios ("
+            "  id INT AUTO_INCREMENT PRIMARY KEY,"
+            "  nome VARCHAR(80) NOT NULL UNIQUE,"
+            "  senha_hash VARCHAR(255) NOT NULL,"
+            "  criado_em DATE NULL"
+            ") ENGINE=InnoDB"
+        )
+    finally:
+        conn.close()
+
+
+# ---------- Usuários ----------
+def contar_usuarios():
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS n FROM usuarios")
+        return cur.fetchone()["n"]
+    finally:
+        conn.close()
+
+
+def buscar_usuario(nome):
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM usuarios WHERE nome=%s", (nome,))
+        return cur.fetchone()
+    finally:
+        conn.close()
+
+
+def listar_usuarios():
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, nome, criado_em FROM usuarios ORDER BY nome")
+        return [{"id": r["id"], "nome": r["nome"], "criadoEm": to_json_value(r["criado_em"])}
+                for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def criar_usuario(nome, senha):
+    nome = (nome or "").strip()
+    if not nome or not senha:
+        raise ValueError("Informe usuario e senha.")
+    if len(senha) < 4:
+        raise ValueError("A senha deve ter ao menos 4 caracteres.")
+    if buscar_usuario(nome):
+        raise ValueError("Ja existe um usuario com esse nome.")
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT INTO usuarios (nome, senha_hash, criado_em) VALUES (%s, %s, CURDATE())",
+                    (nome, hash_senha(senha)))
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def alterar_senha(uid, senha):
+    if not senha or len(senha) < 4:
+        raise ValueError("A senha deve ter ao menos 4 caracteres.")
+    conn = conectar()
+    try:
+        conn.cursor().execute("UPDATE usuarios SET senha_hash=%s WHERE id=%s", (hash_senha(senha), int(uid)))
+    finally:
+        conn.close()
+
+
+def excluir_usuario(uid):
+    if contar_usuarios() <= 1:
+        raise ValueError("Nao e possivel excluir o unico usuario do sistema.")
+    conn = conectar()
+    try:
+        conn.cursor().execute("DELETE FROM usuarios WHERE id=%s", (int(uid),))
     finally:
         conn.close()
 
@@ -268,7 +384,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass  # silencia log verboso; erros ainda aparecem via _erro
 
-    def _send(self, code, obj=None, ctype="application/json"):
+    def _send(self, code, obj=None, ctype="application/json", extra_headers=None):
         if obj is None:
             body = b""
         elif isinstance(obj, (bytes, bytearray)):
@@ -278,12 +394,43 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        for k, v in (extra_headers or []):
+            self.send_header(k, v)
         self.end_headers()
         if body:
             self.wfile.write(body)
 
     def _erro(self, code, msg):
         self._send(code, {"erro": msg})
+
+    # ---- sessão ----
+    def _token(self):
+        bruto = self.headers.get("Cookie")
+        if not bruto:
+            return None
+        try:
+            ck = http.cookies.SimpleCookie(bruto)
+            return ck["rh_sessao"].value if "rh_sessao" in ck else None
+        except Exception:
+            return None
+
+    def _sessao(self):
+        return sessao_valida(self._token() or "")
+
+    def _exige_login(self):
+        """Retorna a sessão; se não houver, responde 401 e retorna None."""
+        s = self._sessao()
+        if not s:
+            self._erro(401, "Nao autenticado")
+            return None
+        return s
+
+    def _cookie_login(self, token):
+        return [("Set-Cookie",
+                 f"rh_sessao={token}; HttpOnly; Path=/; SameSite=Lax; Max-Age={SESSAO_HORAS * 3600}")]
+
+    def _cookie_logout(self):
+        return [("Set-Cookie", "rh_sessao=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0")]
 
     def _corpo(self):
         n = int(self.headers.get("Content-Length", 0) or 0)
@@ -306,6 +453,18 @@ class Handler(BaseHTTPRequestHandler):
         if not p or p == ["index.html"]:
             return self._servir_html()
         try:
+            # --- rotas públicas de autenticação ---
+            if p == ["api", "setup"]:
+                return self._send(200, {"precisaSetup": contar_usuarios() == 0})
+            if p == ["api", "me"]:
+                s = self._sessao()
+                return self._send(200, {"usuario": s["usuario"]}) if s else self._erro(401, "Nao autenticado")
+
+            # --- daqui para baixo exige login ---
+            if not self._exige_login():
+                return
+            if p == ["api", "usuarios"]:
+                return self._send(200, listar_usuarios())
             if p == ["api", "backup"]:
                 return self._send(200, backup())
             if len(p) >= 2 and p[0] == "api" and p[1] in STORES:
@@ -322,6 +481,38 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         p = self._partes()
         try:
+            # --- login (público) ---
+            if p == ["api", "login"]:
+                d = self._corpo()
+                u = buscar_usuario((d.get("usuario") or "").strip())
+                if u and verificar_senha(d.get("senha") or "", u["senha_hash"]):
+                    token = criar_sessao(u["id"], u["nome"])
+                    return self._send(200, {"usuario": u["nome"]}, extra_headers=self._cookie_login(token))
+                return self._erro(401, "Usuario ou senha invalidos.")
+
+            if p == ["api", "logout"]:
+                tok = self._token()
+                if tok:
+                    SESSOES.pop(tok, None)
+                return self._send(200, {"ok": True}, extra_headers=self._cookie_logout())
+
+            # --- criar usuário: público SÓ no primeiro acesso (nenhum usuário ainda) ---
+            if p == ["api", "usuarios"]:
+                primeiro = contar_usuarios() == 0
+                if not primeiro and not self._exige_login():
+                    return
+                d = self._corpo()
+                novo_id = criar_usuario(d.get("usuario"), d.get("senha"))
+                # No primeiro acesso, já loga o usuário recém-criado.
+                if primeiro:
+                    token = criar_sessao(novo_id, d.get("usuario").strip())
+                    return self._send(201, {"id": novo_id, "usuario": d.get("usuario").strip()},
+                                      extra_headers=self._cookie_login(token))
+                return self._send(201, {"id": novo_id})
+
+            # --- daqui para baixo exige login ---
+            if not self._exige_login():
+                return
             if p == ["api", "restore"]:
                 restaurar(self._corpo())
                 return self._send(200, {"ok": True})
@@ -329,26 +520,42 @@ class Handler(BaseHTTPRequestHandler):
                 novo_id = criar(p[1], self._corpo())
                 return self._send(201, {"id": novo_id})
             return self._erro(404, "rota nao encontrada")
+        except ValueError as e:
+            return self._erro(400, str(e))
         except Exception as e:
             return self._erro(500, str(e))
 
     def do_PUT(self):
         p = self._partes()
         try:
+            if not self._exige_login():
+                return
+            if len(p) == 3 and p[0] == "api" and p[1] == "usuarios":
+                alterar_senha(int(p[2]), (self._corpo().get("senha") or ""))
+                return self._send(200, {"ok": True})
             if len(p) == 3 and p[0] == "api" and p[1] in STORES:
                 atualizar(p[1], int(p[2]), self._corpo())
                 return self._send(200, {"id": int(p[2])})
             return self._erro(404, "rota nao encontrada")
+        except ValueError as e:
+            return self._erro(400, str(e))
         except Exception as e:
             return self._erro(500, str(e))
 
     def do_DELETE(self):
         p = self._partes()
         try:
+            if not self._exige_login():
+                return
+            if len(p) == 3 and p[0] == "api" and p[1] == "usuarios":
+                excluir_usuario(int(p[2]))
+                return self._send(200, {"ok": True})
             if len(p) == 3 and p[0] == "api" and p[1] in STORES:
                 remover(p[1], int(p[2]))
                 return self._send(200, {"ok": True})
             return self._erro(404, "rota nao encontrada")
+        except ValueError as e:
+            return self._erro(400, str(e))
         except Exception as e:
             return self._erro(500, str(e))
 

@@ -58,6 +58,16 @@ CREATE TABLE IF NOT EXISTS contratacoes (
     REFERENCES candidatos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- ---------- 5) Usuários (login do sistema) ----------
+-- A senha é guardada com hash PBKDF2 (nunca em texto puro). O primeiro
+-- usuário é criado pela própria tela, no "primeiro acesso".
+CREATE TABLE IF NOT EXISTS usuarios (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  nome       VARCHAR(80)  NOT NULL UNIQUE,        -- nome de login
+  senha_hash VARCHAR(255) NOT NULL,               -- pbkdf2$iters$salt$hash
+  criado_em  DATE         NULL
+) ENGINE=InnoDB;
+
 -- ============================================================
 --  5) Usuário da aplicação (OPCIONAL, porém recomendado)
 --  Evita usar o 'root' na aplicação. TROQUE a senha abaixo antes de rodar!

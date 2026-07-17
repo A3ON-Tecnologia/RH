@@ -39,6 +39,14 @@ Dê **dois cliques em `iniciar-servidor.bat`** (ou rode `python server.py`) e de
 - **Nos outros computadores:** `http://IP-DA-MAQUINA-SERVIDOR:8689`
   (o `iniciar-servidor.bat` mostra o IP certo na tela ao ligar).
 
+### Login
+O sistema é protegido por **usuário e senha**. No **primeiro acesso** (banco sem usuários),
+a tela pede para criar o primeiro usuário — ele já entra automaticamente. Depois, cada pessoa
+entra com o seu login. Qualquer usuário logado pode cadastrar novos usuários na aba **Usuários**.
+
+> As senhas são guardadas com hash (não em texto puro). Como o sistema roda em HTTP na rede
+> interna, use-o apenas na LAN do escritório.
+
 Telas:
 - **Candidatos** — nome, telefone e anexo do PDF do currículo.
 - **Entrevistas** — candidato, data, situação, andamento e anexo do formulário.
@@ -46,6 +54,7 @@ Telas:
   com cálculo automático dos vencimentos dos períodos de experiência.
   > Só aparecem aqui os candidatos com **entrevista aprovada**. Se a lista estiver vazia,
   > registre antes a entrevista com situação **Aprovado** na tela de Entrevistas.
+- **Usuários** — cadastrar/excluir usuários e trocar senha.
 
 ## Onde os dados ficam
 No **MySQL** (banco `sistema_rh`) da máquina servidor. Os PDFs ficam em colunas `LONGBLOB`.

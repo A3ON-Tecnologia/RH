@@ -22,6 +22,19 @@ Feito para acesso de **vários computadores** do escritório ao mesmo tempo.
    (Agendada/Realizada/Aprovado/Reprovado/Em análise), campo de andamento e anexo do formulário.
 3. **Contratação** — candidato, departamento, data de admissão e modalidade
    **45+45** ou **30+30**, com cálculo automático dos vencimentos dos períodos de experiência.
+4. **Usuários** — cadastro/exclusão de usuários e troca de senha.
+
+## Login / autenticação
+- Tabela `usuarios` (nome único + `senha_hash` PBKDF2, nunca senha em texto puro).
+- **Vários usuários**; qualquer usuário logado pode cadastrar outros (sem papel de admin).
+- **Primeiro acesso:** se a tabela `usuarios` estiver vazia, a tela mostra "crie o usuário
+  administrador" e o `POST /api/usuarios` é liberado só nessa situação (depois exige login).
+- Sessão por **cookie HttpOnly** (`rh_sessao`), guardada em memória no servidor (`SESSOES`),
+  dura 12h e renova a cada uso. Reiniciar o servidor derruba as sessões (todos relogam).
+- Todas as rotas `/api/...` de dados exigem login (401 se não autenticado). Rotas públicas:
+  `GET /api/setup`, `POST /api/login`, `POST /api/logout`, e `POST /api/usuarios` só no 1º acesso.
+- **Limitação conhecida:** roda em HTTP na LAN, então a senha trafega sem criptografia.
+  Aceitável para rede interna; para expor fora, seria preciso HTTPS.
 
 ## Regra: quem pode ser contratado
 A lista de candidatos da tela de **Contratação** mostra **somente quem tem ao menos uma entrevista
@@ -89,6 +102,11 @@ então um backup do IndexedDB pode ser restaurado direto no MySQL pela tela.
 
 ## Endpoints da API (referência rápida)
 - `GET  /`                       → serve a página `index.html`
+- `GET  /api/setup`              → {precisaSetup} — se ainda não há nenhum usuário (público)
+- `POST /api/login`              → {usuario,senha} → seta cookie de sessão (público)
+- `POST /api/logout`             → encerra a sessão
+- `GET  /api/me`                 → usuário logado (ou 401)
+- `GET  /api/usuarios`           → lista usuários | `POST` cria | `PUT /{id}` troca senha | `DELETE /{id}`
 - `GET  /api/{store}`            → lista (anexos vêm como flag true/false)
 - `GET  /api/{store}/{id}`       → registro completo (anexos em base64 data URL)
 - `POST /api/{store}`            → cria (retorna `{id}`)
