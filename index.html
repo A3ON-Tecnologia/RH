@@ -209,6 +209,45 @@
             <option value="Reprovado">Reprovado</option>
             <option value="Em análise">Em análise</option>
           </select>
+          <div style="display:flex;gap:12px">
+            <div style="width:90px">
+              <label>Idade</label>
+              <input type="number" id="entrIdade" min="0" max="99" placeholder="Ex.: 25" oninput="if(this.value.length>2)this.value=this.value.slice(0,2)">
+            </div>
+            <div style="flex:1">
+              <label>Estado civil</label>
+              <select id="entrEstadoCivil">
+                <option value="">—</option>
+                <option value="Casada">Casada</option>
+                <option value="Solteira">Solteira</option>
+              </select>
+            </div>
+            <div style="flex:1">
+              <label>Mora</label>
+              <select id="entrMora">
+                <option value="">—</option>
+                <option value="Pais">Pais</option>
+                <option value="Sozinha">Sozinha</option>
+                <option value="Marido">Marido</option>
+              </select>
+            </div>
+          </div>
+          <label>Faculdade</label>
+          <input type="text" id="entrFaculdade" placeholder="Nome da faculdade">
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">
+              <label>Fase da faculdade</label>
+              <input type="text" id="entrFaseFaculdade" placeholder="Ex.: 5º semestre">
+            </div>
+            <div style="flex:1">
+              <label>Possibilidade de troca de faculdade</label>
+              <select id="entrTrocaFaculdade">
+                <option value="">—</option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
+              </select>
+            </div>
+          </div>
           <label>Andamento da entrevista <span class="req">*</span></label>
           <textarea id="entrAndamento" required placeholder="Descreva como foi a entrevista, impressões, pontos observados..."></textarea>
           <label>Formulário da entrevista (anexo)</label>
@@ -480,10 +519,16 @@ async function salvarEntrevista(e){
   const data=document.getElementById('entrData').value;
   const hora=document.getElementById('entrHora').value;
   const situacao=document.getElementById('entrSituacao').value;
+  const idade=document.getElementById('entrIdade').value;
+  const estadoCivil=document.getElementById('entrEstadoCivil').value;
+  const mora=document.getElementById('entrMora').value;
+  const faculdade=document.getElementById('entrFaculdade').value.trim();
+  const faseFaculdade=document.getElementById('entrFaseFaculdade').value.trim();
+  const trocaFaculdade=document.getElementById('entrTrocaFaculdade').value;
   const andamento=document.getElementById('entrAndamento').value.trim();
   const arq=document.getElementById('entrFormulario').files[0];
   if(!candId||!data||!andamento){ toast('Preencha candidato, data e andamento','erro'); return; }
-  let obj={candId,data,hora,situacao,andamento};
+  let obj={candId,data,hora,situacao,idade,estadoCivil,mora,faculdade,faseFaculdade,trocaFaculdade,andamento};
   if(!id) obj.criadoEm=hojeISO();
   if(id) obj.id=Number(id);
   if(arq){ obj.formulario=arq; obj.formularioNome=arq.name; }
@@ -523,6 +568,12 @@ async function verEntrevista(id){
     <div class="info-row"><div class="k">Telefone</div><div class="v">${escapar(c?c.telefone:'—')}</div></div>
     <div class="info-row"><div class="k">Data</div><div class="v">${fmtData(e.data)}${e.hora?' às '+escapar(e.hora):''}</div></div>
     <div class="info-row"><div class="k">Situação</div><div class="v"><span class="badge ${corSituacao(e.situacao)}">${escapar(e.situacao||'—')}</span></div></div>
+    <div class="info-row"><div class="k">Idade</div><div class="v">${e.idade!=null&&e.idade!==''?escapar(String(e.idade))+' anos':'—'}</div></div>
+    <div class="info-row"><div class="k">Estado civil</div><div class="v">${escapar(e.estadoCivil||'—')}</div></div>
+    <div class="info-row"><div class="k">Mora</div><div class="v">${escapar(e.mora||'—')}</div></div>
+    <div class="info-row"><div class="k">Faculdade</div><div class="v">${escapar(e.faculdade||'—')}</div></div>
+    <div class="info-row"><div class="k">Fase da faculdade</div><div class="v">${escapar(e.faseFaculdade||'—')}</div></div>
+    <div class="info-row"><div class="k">Troca de faculdade</div><div class="v">${escapar(e.trocaFaculdade||'—')}</div></div>
     <div class="info-row"><div class="k">Andamento</div><div class="v" style="white-space:pre-wrap">${escapar(e.andamento)}</div></div>
     ${e.formulario?`<div class="info-row"><div class="k">Formulário</div><div class="v"><span class="link" onclick="abrirArquivo('entrevistas',${e.id},'formulario')">${escapar(e.formularioNome||'abrir anexo')}</span></div></div>`:''}`;
   document.getElementById('modalBg').classList.add('ativo');
@@ -535,6 +586,12 @@ async function editarEntrevista(id){
   document.getElementById('entrData').value=e.data;
   document.getElementById('entrHora').value=e.hora||'';
   document.getElementById('entrSituacao').value=e.situacao||'Agendada';
+  document.getElementById('entrIdade').value=e.idade??'';
+  document.getElementById('entrEstadoCivil').value=e.estadoCivil||'';
+  document.getElementById('entrMora').value=e.mora||'';
+  document.getElementById('entrFaculdade').value=e.faculdade||'';
+  document.getElementById('entrFaseFaculdade').value=e.faseFaculdade||'';
+  document.getElementById('entrTrocaFaculdade').value=e.trocaFaculdade||'';
   document.getElementById('entrAndamento').value=e.andamento||'';
   document.getElementById('tituloFormEntr').textContent='Editar Entrevista';
   document.getElementById('btnEntrTxt').textContent='Atualizar Entrevista';

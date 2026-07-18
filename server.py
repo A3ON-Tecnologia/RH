@@ -37,6 +37,9 @@ STORES = {
     },
     "entrevistas": {
         "scalars": [("candId", "cand_id"), ("data", "data"), ("hora", "hora"), ("situacao", "situacao"),
+                     ("idade", "idade"), ("estadoCivil", "estado_civil"), ("mora", "mora"),
+                     ("faculdade", "faculdade"), ("faseFaculdade", "fase_faculdade"),
+                     ("trocaFaculdade", "troca_faculdade"),
                      ("andamento", "andamento"), ("criadoEm", "criado_em")],
         "files": [("formulario", "formulario", "formulario_nome", "formulario_mime", "formularioNome")],
     },
@@ -49,7 +52,7 @@ STORES = {
 }
 ORDEM_TABELAS = ["candidatos", "entrevistas", "contratacoes"]
 DATE_COLS = {"data", "admissao", "fim1", "inicio2", "fim_final", "criado_em"}
-INT_COLS = {"cand_id", "prazo"}
+INT_COLS = {"cand_id", "prazo", "idade"}
 
 # ---------- Login / sessões ----------
 SESSAO_HORAS = 12                 # quanto tempo o login dura sem atividade
@@ -118,6 +121,12 @@ def ensure_schema():
         add_col_if_missing(cur, "candidatos", "curriculo_mime", "VARCHAR(120) NULL")
         add_col_if_missing(cur, "entrevistas", "formulario_mime", "VARCHAR(120) NULL")
         add_col_if_missing(cur, "entrevistas", "hora", "VARCHAR(5) NULL")
+        add_col_if_missing(cur, "entrevistas", "idade", "TINYINT UNSIGNED NULL")
+        add_col_if_missing(cur, "entrevistas", "estado_civil", "VARCHAR(20) NULL")
+        add_col_if_missing(cur, "entrevistas", "mora", "VARCHAR(20) NULL")
+        add_col_if_missing(cur, "entrevistas", "faculdade", "VARCHAR(255) NULL")
+        add_col_if_missing(cur, "entrevistas", "fase_faculdade", "VARCHAR(255) NULL")
+        add_col_if_missing(cur, "entrevistas", "troca_faculdade", "VARCHAR(5) NULL")
         cur.execute(
             "CREATE TABLE IF NOT EXISTS usuarios ("
             "  id INT AUTO_INCREMENT PRIMARY KEY,"

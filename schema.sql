@@ -28,11 +28,17 @@ CREATE TABLE IF NOT EXISTS candidatos (
 -- ---------- 3) Entrevistas ----------
 CREATE TABLE IF NOT EXISTS entrevistas (
   id              INT AUTO_INCREMENT PRIMARY KEY,
-  cand_id         INT           NOT NULL,
-  data            DATE          NOT NULL,
-  hora            VARCHAR(5)    NULL,           -- horário HH:MM (opcional)
-  situacao        VARCHAR(30)   NULL,           -- Agendada / Realizada / Aprovado / Reprovado / Em análise
-  andamento       TEXT          NOT NULL,
+  cand_id         INT              NOT NULL,
+  data            DATE             NOT NULL,
+  hora            VARCHAR(5)       NULL,        -- horário HH:MM (opcional)
+  situacao        VARCHAR(30)      NULL,        -- Agendada / Realizada / Aprovado / Reprovado / Em análise
+  idade           TINYINT UNSIGNED NULL,        -- idade do candidato (2 dígitos)
+  estado_civil    VARCHAR(20)      NULL,        -- Casada / Solteira
+  mora            VARCHAR(20)      NULL,        -- Pais / Sozinha / Marido
+  faculdade       VARCHAR(255)     NULL,
+  fase_faculdade  VARCHAR(255)     NULL,
+  troca_faculdade VARCHAR(5)       NULL,        -- Sim / Não
+  andamento       TEXT             NOT NULL,
   formulario_nome VARCHAR(255)  NULL,
   formulario      LONGBLOB      NULL,
   formulario_mime VARCHAR(120)  NULL,           -- tipo do arquivo anexado
