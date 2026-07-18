@@ -18,7 +18,7 @@ Feito para acesso de **vários computadores** do escritório ao mesmo tempo.
 
 ## Telas implementadas
 1. **Candidatos** — nome, telefone (máscara BR) e anexo do PDF do currículo.
-2. **Entrevistas** — seleção do candidato, data, situação
+2. **Entrevistas** — seleção do candidato, data, **hora** (opcional, `VARCHAR(5)` HH:MM), situação
    (Agendada/Realizada/Aprovado/Reprovado/Em análise), campo de andamento e anexo do formulário.
 3. **Contratação** — candidato, departamento, data de admissão e modalidade
    **45+45** ou **30+30**, com cálculo automático dos vencimentos dos períodos de experiência.

@@ -36,7 +36,7 @@ STORES = {
         "files": [("curriculo", "curriculo", "curriculo_nome", "curriculo_mime", "curriculoNome")],
     },
     "entrevistas": {
-        "scalars": [("candId", "cand_id"), ("data", "data"), ("situacao", "situacao"),
+        "scalars": [("candId", "cand_id"), ("data", "data"), ("hora", "hora"), ("situacao", "situacao"),
                      ("andamento", "andamento"), ("criadoEm", "criado_em")],
         "files": [("formulario", "formulario", "formulario_nome", "formulario_mime", "formularioNome")],
     },
@@ -117,6 +117,7 @@ def ensure_schema():
         cur = conn.cursor()
         add_col_if_missing(cur, "candidatos", "curriculo_mime", "VARCHAR(120) NULL")
         add_col_if_missing(cur, "entrevistas", "formulario_mime", "VARCHAR(120) NULL")
+        add_col_if_missing(cur, "entrevistas", "hora", "VARCHAR(5) NULL")
         cur.execute(
             "CREATE TABLE IF NOT EXISTS usuarios ("
             "  id INT AUTO_INCREMENT PRIMARY KEY,"

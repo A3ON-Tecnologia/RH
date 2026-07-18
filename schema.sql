@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS entrevistas (
   id              INT AUTO_INCREMENT PRIMARY KEY,
   cand_id         INT           NOT NULL,
   data            DATE          NOT NULL,
+  hora            VARCHAR(5)    NULL,           -- horário HH:MM (opcional)
   situacao        VARCHAR(30)   NULL,           -- Agendada / Realizada / Aprovado / Reprovado / Em análise
   andamento       TEXT          NOT NULL,
   formulario_nome VARCHAR(255)  NULL,

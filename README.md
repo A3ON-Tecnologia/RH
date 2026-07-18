@@ -49,7 +49,7 @@ entra com o seu login. Qualquer usuário logado pode cadastrar novos usuários n
 
 Telas:
 - **Candidatos** — nome, telefone e anexo do PDF do currículo.
-- **Entrevistas** — candidato, data, situação, andamento e anexo do formulário.
+- **Entrevistas** — candidato, data, hora, situação, andamento e anexo do formulário.
 - **Contratação** — candidato, departamento, admissão e modalidade 45+45 ou 30+30,
   com cálculo automático dos vencimentos dos períodos de experiência.
   > Só aparecem aqui os candidatos com **entrevista aprovada**. Se a lista estiver vazia,
