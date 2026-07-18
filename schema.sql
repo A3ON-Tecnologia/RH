@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS entrevistas (
   mora            VARCHAR(20)      NULL,        -- Pais / Sozinha / Marido
   faculdade       VARCHAR(255)     NULL,
   fase_faculdade  VARCHAR(255)     NULL,
-  troca_faculdade VARCHAR(5)       NULL,        -- Sim / Não
+  troca_faculdade VARCHAR(10)      NULL,        -- Sim / Não / Talvez
   andamento       TEXT             NOT NULL,
   formulario_nome VARCHAR(255)  NULL,
   formulario      LONGBLOB      NULL,

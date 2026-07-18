@@ -113,6 +113,19 @@ def add_col_if_missing(cur, table, col, ddl):
         print(f"  [migracao] coluna {table}.{col} criada")
 
 
+def ensure_min_varchar(cur, table, col, minlen):
+    """Alarga uma coluna VARCHAR se ela estiver menor que o necessario."""
+    cur.execute(
+        "SELECT character_maximum_length AS n FROM information_schema.columns "
+        "WHERE table_schema=%s AND table_name=%s AND column_name=%s",
+        (DB["database"], table, col),
+    )
+    row = cur.fetchone()
+    if row and row["n"] is not None and row["n"] < minlen:
+        cur.execute(f"ALTER TABLE {table} MODIFY {col} VARCHAR({minlen}) NULL")
+        print(f"  [migracao] coluna {table}.{col} ampliada para VARCHAR({minlen})")
+
+
 def ensure_schema():
     """Garante as colunas de mime (anexos) e a tabela de usuarios."""
     conn = conectar()
@@ -126,7 +139,8 @@ def ensure_schema():
         add_col_if_missing(cur, "entrevistas", "mora", "VARCHAR(20) NULL")
         add_col_if_missing(cur, "entrevistas", "faculdade", "VARCHAR(255) NULL")
         add_col_if_missing(cur, "entrevistas", "fase_faculdade", "VARCHAR(255) NULL")
-        add_col_if_missing(cur, "entrevistas", "troca_faculdade", "VARCHAR(5) NULL")
+        add_col_if_missing(cur, "entrevistas", "troca_faculdade", "VARCHAR(10) NULL")
+        ensure_min_varchar(cur, "entrevistas", "troca_faculdade", 10)
         cur.execute(
             "CREATE TABLE IF NOT EXISTS usuarios ("
             "  id INT AUTO_INCREMENT PRIMARY KEY,"
