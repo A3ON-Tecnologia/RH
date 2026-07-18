@@ -106,6 +106,12 @@
   .login-erro{color:var(--vermelho);font-size:13px;font-weight:600;margin-top:12px;min-height:18px;text-align:center}
   .usuario-atual{display:flex;align-items:center;gap:8px}
   .usuario-atual svg{width:16px;height:16px;opacity:.85}
+  /* Lista de candidatos clicável (tela de entrevistas) */
+  .item-cand{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--borda);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:.12s}
+  .item-cand:hover{border-color:var(--azul2);background:var(--azul-claro)}
+  .item-cand.sel{border-color:var(--azul);background:var(--azul-claro);box-shadow:0 0 0 1px var(--azul)}
+  .item-cand .cand-nome{font-weight:600}
+  .item-cand .cand-tel{font-size:12px;color:var(--cinza);margin-top:1px}
 </style>
 </head>
 <body>
@@ -182,15 +188,31 @@
   <!-- ===================== ENTREVISTAS ===================== -->
   <section class="tela" id="tela-entrevistas">
     <div class="grid">
+      <!-- ESQUERDA: lista de candidatos -->
+      <div class="card">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Candidatos
+        </h3>
+        <div class="busca" style="margin-bottom:14px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="buscaEntr" placeholder="Buscar candidato..." oninput="renderEntrevistas()">
+        </div>
+        <div id="listaCandidatosEntr"></div>
+      </div>
+      <!-- DIREITA: formulário da entrevista do candidato selecionado -->
       <div class="card">
         <h3>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span id="tituloFormEntr">Nova Entrevista</span>
+          <span id="tituloFormEntr">Entrevista</span>
         </h3>
-        <form id="formEntrevista" onsubmit="salvarEntrevista(event)">
+        <div id="entrSemSelecao" class="vazio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+          <div>Selecione um candidato à esquerda para registrar ou editar a entrevista.</div>
+        </div>
+        <form id="formEntrevista" onsubmit="salvarEntrevista(event)" style="display:none">
           <input type="hidden" id="entrId">
-          <label>Candidato <span class="req">*</span></label>
-          <select id="entrCand" required></select>
+          <div id="entrCandInfo" style="background:var(--azul-claro);border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:14px"></div>
           <div style="display:flex;gap:12px">
             <div style="flex:1">
               <label>Data da entrevista <span class="req">*</span></label>
@@ -258,21 +280,16 @@
             <input type="file" id="entrFormulario" onchange="arquivoSelecionado(this,'dropEntr')">
             <span id="dropEntrTxt">Clique para anexar o formulário</span>
           </label>
+          <div id="entrAnexoAtual" style="margin-top:6px;font-size:13px"></div>
           <div class="btn" style="display:flex" onclick="document.getElementById('formEntrevista').requestSubmit()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             <span id="btnEntrTxt">Salvar Entrevista</span>
           </div>
-          <button type="button" class="btn sec" id="btnCancelEntr" style="display:none;width:100%;margin-top:8px;justify-content:center" onclick="resetForm('entrevista')">Cancelar edição</button>
-        </form>
-      </div>
-      <div class="card">
-        <div class="toolbar">
-          <div class="busca">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <input type="text" id="buscaEntr" placeholder="Buscar por candidato..." oninput="renderEntrevistas()">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="button" class="btn sec" style="flex:1;justify-content:center" onclick="fecharEntr()">Fechar</button>
+            <button type="button" class="btn danger" id="btnExcluirEntr" style="display:none;flex:1;justify-content:center;margin:0" onclick="excluirEntrevistaAtual()">Excluir entrevista</button>
           </div>
-        </div>
-        <div id="listaEntrevistas"></div>
+        </form>
       </div>
     </div>
   </section>
@@ -433,7 +450,7 @@ function mostrarTela(nome,btn){
   document.getElementById('tela-'+nome).classList.add('ativo');
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('ativo'));
   btn.classList.add('ativo');
-  if(nome==='entrevistas'){ carregarSelectCandidatos('entrCand'); renderEntrevistas(); }
+  if(nome==='entrevistas'){ renderEntrevistas(); }
   if(nome==='contratacoes'){ carregarSelectCandidatos('contrCand',{somenteAprovados:true}); renderContratacoes(); }
   if(nome==='usuarios'){ renderUsuarios(); }
 }
@@ -515,10 +532,71 @@ async function carregarSelectCandidatos(selId,{somenteAprovados=false,incluirId=
   sel.innerHTML=`<option value="">${placeholder}</option>`+lista.map(c=>`<option value="${c.id}">${escapar(c.nome)}</option>`).join('');
   sel.value=atual;
 }
-async function salvarEntrevista(e){
-  e.preventDefault();
+let entrSelCandId=null;   // candidato selecionado na tela de Entrevistas
+
+function limparCamposEntr(){
+  document.getElementById('entrId').value='';
+  document.getElementById('entrData').value=hojeISO();
+  document.getElementById('entrHora').value='';
+  document.getElementById('entrSituacao').value='Agendada';
+  document.getElementById('entrIdade').value='';
+  document.getElementById('entrEstadoCivil').value='';
+  document.getElementById('entrMora').value='';
+  document.getElementById('entrFaculdade').value='';
+  document.getElementById('entrFaseFaculdade').value='';
+  document.getElementById('entrTrocaFaculdade').value='';
+  document.getElementById('entrAndamento').value='';
+  document.getElementById('entrFormulario').value='';
+  document.getElementById('dropEntr').classList.remove('tem');
+  document.getElementById('dropEntrTxt').textContent='Clique para anexar o formulário';
+  document.getElementById('entrAnexoAtual').innerHTML='';
+}
+// Clique num candidato: abre o formulário da entrevista dele (edita a existente, se houver)
+async function selecionarCandidatoEntr(candId){
+  entrSelCandId=candId;
+  const cand=await getOne('candidatos',candId);
+  const entrevistas=(await getAll('entrevistas')).filter(e=>e.candId===candId).sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const e=entrevistas[0];
+  document.getElementById('entrSemSelecao').style.display='none';
+  document.getElementById('formEntrevista').style.display='block';
+  document.getElementById('tituloFormEntr').textContent='Entrevista de '+cand.nome;
+  document.getElementById('entrCandInfo').innerHTML=`<b>${escapar(cand.nome)}</b>${cand.telefone?' · '+escapar(cand.telefone):''}`;
+  limparCamposEntr();
+  if(e){
+    document.getElementById('entrId').value=e.id;
+    document.getElementById('entrData').value=e.data||'';
+    document.getElementById('entrHora').value=e.hora||'';
+    document.getElementById('entrSituacao').value=e.situacao||'Agendada';
+    document.getElementById('entrIdade').value=e.idade??'';
+    document.getElementById('entrEstadoCivil').value=e.estadoCivil||'';
+    document.getElementById('entrMora').value=e.mora||'';
+    document.getElementById('entrFaculdade').value=e.faculdade||'';
+    document.getElementById('entrFaseFaculdade').value=e.faseFaculdade||'';
+    document.getElementById('entrTrocaFaculdade').value=e.trocaFaculdade||'';
+    document.getElementById('entrAndamento').value=e.andamento||'';
+    document.getElementById('btnEntrTxt').textContent='Atualizar Entrevista';
+    document.getElementById('btnExcluirEntr').style.display='flex';
+    if(e.formulario){
+      document.getElementById('dropEntrTxt').textContent='📎 '+(e.formularioNome||'anexo')+' (deixe vazio p/ manter)';
+      document.getElementById('entrAnexoAtual').innerHTML=`<span class="link" onclick="abrirArquivo('entrevistas',${e.id},'formulario')">Ver anexo atual</span>`;
+    }
+  }else{
+    document.getElementById('btnEntrTxt').textContent='Salvar Entrevista';
+    document.getElementById('btnExcluirEntr').style.display='none';
+  }
+  await renderEntrevistas();   // atualiza o destaque na lista
+}
+function fecharEntr(){
+  entrSelCandId=null;
+  document.getElementById('formEntrevista').style.display='none';
+  document.getElementById('entrSemSelecao').style.display='block';
+  document.getElementById('tituloFormEntr').textContent='Entrevista';
+  renderEntrevistas();
+}
+async function salvarEntrevista(ev){
+  ev.preventDefault();
+  if(!entrSelCandId){ toast('Selecione um candidato à esquerda','erro'); return; }
   const id=document.getElementById('entrId').value;
-  const candId=Number(document.getElementById('entrCand').value);
   const data=document.getElementById('entrData').value;
   const hora=document.getElementById('entrHora').value;
   const situacao=document.getElementById('entrSituacao').value;
@@ -530,77 +608,47 @@ async function salvarEntrevista(e){
   const trocaFaculdade=document.getElementById('entrTrocaFaculdade').value;
   const andamento=document.getElementById('entrAndamento').value.trim();
   const arq=document.getElementById('entrFormulario').files[0];
-  if(!candId||!data||!andamento){ toast('Preencha candidato, data e andamento','erro'); return; }
-  let obj={candId,data,hora,situacao,idade,estadoCivil,mora,faculdade,faseFaculdade,trocaFaculdade,andamento};
+  if(!data||!andamento){ toast('Preencha data e andamento','erro'); return; }
+  let obj={candId:entrSelCandId,data,hora,situacao,idade,estadoCivil,mora,faculdade,faseFaculdade,trocaFaculdade,andamento};
   if(!id) obj.criadoEm=hojeISO();
   if(id) obj.id=Number(id);
   if(arq){ obj.formulario=arq; obj.formularioNome=arq.name; }
   try{
     await put('entrevistas',obj);
     toast(id?'Entrevista atualizada!':'Entrevista registrada!');
-    resetForm('entrevista');
-    renderEntrevistas();
+    await selecionarCandidatoEntr(entrSelCandId);   // recarrega (agora em modo edição)
   }catch(err){ toast('Erro ao salvar: '+err.message,'erro'); }
 }
+async function excluirEntrevistaAtual(){
+  const id=document.getElementById('entrId').value;
+  if(!id) return;
+  if(!confirm('Excluir a entrevista deste candidato? Esta ação não pode ser desfeita.')) return;
+  try{
+    await del('entrevistas',id);
+    toast('Entrevista excluída','ok');
+    await selecionarCandidatoEntr(entrSelCandId);   // volta para o formulário em branco
+  }catch(err){ toast(err.message,'erro'); }
+}
 function corSituacao(s){ return {'Aprovado':'verde','Reprovado':'vermelho','Realizada':'azul','Em análise':'amarelo','Agendada':'cinza'}[s]||'cinza'; }
+// Lista de candidatos à esquerda; badge mostra a situação da entrevista (ou "sem entrevista")
 async function renderEntrevistas(){
   const busca=(document.getElementById('buscaEntr').value||'').toLowerCase();
-  const cands=await getAll('candidatos'); const mapa={}; cands.forEach(c=>mapa[c.id]=c.nome);
-  let lista=await getAll('entrevistas');
-  lista.sort((a,b)=>(b.data||'').localeCompare(a.data||''));
-  if(busca) lista=lista.filter(e=>(mapa[e.candId]||'').toLowerCase().includes(busca));
-  const el=document.getElementById('listaEntrevistas');
-  if(!lista.length){ el.innerHTML=vazio('Nenhuma entrevista registrada'); return; }
-  el.innerHTML=`<table><thead><tr><th>Candidato</th><th>Data / Hora</th><th>Situação</th><th>Anexo</th><th>Ações</th></tr></thead><tbody>`+
-    lista.map(e=>`<tr>
-      <td><b>${escapar(mapa[e.candId]||'(candidato removido)')}</b></td>
-      <td>${fmtData(e.data)}${e.hora?' <b>'+escapar(e.hora)+'</b>':''}</td>
-      <td><span class="badge ${corSituacao(e.situacao)}">${escapar(e.situacao||'—')}</span></td>
-      <td>${e.formulario?`<span class="link" onclick="abrirArquivo('entrevistas',${e.id},'formulario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Ver</span>`:'<span class="badge cinza">—</span>'}</td>
-      <td><div class="acoes-linha">
-        <button class="btn sec mini" onclick="verEntrevista(${e.id})">Detalhes</button>
-        <button class="btn sec mini" onclick="editarEntrevista(${e.id})">Editar</button>
-        <button class="btn danger mini" onclick="excluir('entrevistas',${e.id},'Entrevista')">Excluir</button>
-      </div></td></tr>`).join('')+`</tbody></table>`;
-}
-async function verEntrevista(id){
-  const e=await getOne('entrevistas',id); const c=await getOne('candidatos',e.candId);
-  document.getElementById('modalTitulo').textContent='Detalhes da Entrevista';
-  document.getElementById('modalBody').innerHTML=`
-    <div class="info-row"><div class="k">Candidato</div><div class="v">${escapar(c?c.nome:'(removido)')}</div></div>
-    <div class="info-row"><div class="k">Telefone</div><div class="v">${escapar(c?c.telefone:'—')}</div></div>
-    <div class="info-row"><div class="k">Data</div><div class="v">${fmtData(e.data)}${e.hora?' às '+escapar(e.hora):''}</div></div>
-    <div class="info-row"><div class="k">Situação</div><div class="v"><span class="badge ${corSituacao(e.situacao)}">${escapar(e.situacao||'—')}</span></div></div>
-    <div class="info-row"><div class="k">Idade</div><div class="v">${e.idade!=null&&e.idade!==''?escapar(String(e.idade))+' anos':'—'}</div></div>
-    <div class="info-row"><div class="k">Estado civil</div><div class="v">${escapar(e.estadoCivil||'—')}</div></div>
-    <div class="info-row"><div class="k">Mora</div><div class="v">${escapar(e.mora||'—')}</div></div>
-    <div class="info-row"><div class="k">Faculdade</div><div class="v">${escapar(e.faculdade||'—')}</div></div>
-    <div class="info-row"><div class="k">Fase da faculdade</div><div class="v">${escapar(e.faseFaculdade||'—')}</div></div>
-    <div class="info-row"><div class="k">Troca de faculdade</div><div class="v">${escapar(e.trocaFaculdade||'—')}</div></div>
-    <div class="info-row"><div class="k">Andamento</div><div class="v" style="white-space:pre-wrap">${escapar(e.andamento)}</div></div>
-    ${e.formulario?`<div class="info-row"><div class="k">Formulário</div><div class="v"><span class="link" onclick="abrirArquivo('entrevistas',${e.id},'formulario')">${escapar(e.formularioNome||'abrir anexo')}</span></div></div>`:''}`;
-  document.getElementById('modalBg').classList.add('ativo');
-}
-async function editarEntrevista(id){
-  const e=await getOne('entrevistas',id);
-  await carregarSelectCandidatos('entrCand');
-  document.getElementById('entrId').value=e.id;
-  document.getElementById('entrCand').value=e.candId;
-  document.getElementById('entrData').value=e.data;
-  document.getElementById('entrHora').value=e.hora||'';
-  document.getElementById('entrSituacao').value=e.situacao||'Agendada';
-  document.getElementById('entrIdade').value=e.idade??'';
-  document.getElementById('entrEstadoCivil').value=e.estadoCivil||'';
-  document.getElementById('entrMora').value=e.mora||'';
-  document.getElementById('entrFaculdade').value=e.faculdade||'';
-  document.getElementById('entrFaseFaculdade').value=e.faseFaculdade||'';
-  document.getElementById('entrTrocaFaculdade').value=e.trocaFaculdade||'';
-  document.getElementById('entrAndamento').value=e.andamento||'';
-  document.getElementById('tituloFormEntr').textContent='Editar Entrevista';
-  document.getElementById('btnEntrTxt').textContent='Atualizar Entrevista';
-  document.getElementById('btnCancelEntr').style.display='flex';
-  document.getElementById('dropEntrTxt').textContent=e.formularioNome?('📎 '+e.formularioNome+' (deixe vazio p/ manter)'):'Clique para anexar o formulário';
-  window.scrollTo({top:0,behavior:'smooth'});
+  const cands=(await getAll('candidatos')).sort((a,b)=>a.nome.localeCompare(b.nome));
+  const entrevistas=await getAll('entrevistas');
+  const porCand={};   // candId -> entrevista mais recente
+  entrevistas.forEach(e=>{ const cur=porCand[e.candId]; if(!cur||(e.data||'')>(cur.data||'')) porCand[e.candId]=e; });
+  let lista=cands;
+  if(busca) lista=lista.filter(c=>c.nome.toLowerCase().includes(busca)||(c.telefone||'').includes(busca));
+  const el=document.getElementById('listaCandidatosEntr');
+  if(!lista.length){ el.innerHTML=vazio('Nenhum candidato cadastrado'); return; }
+  el.innerHTML=lista.map(c=>{
+    const e=porCand[c.id];
+    const badge=e?`<span class="badge ${corSituacao(e.situacao)}">${escapar(e.situacao||'—')}</span>`:'<span class="badge cinza">sem entrevista</span>';
+    return `<div class="item-cand${c.id===entrSelCandId?' sel':''}" onclick="selecionarCandidatoEntr(${c.id})">
+      <div><div class="cand-nome">${escapar(c.nome)}</div><div class="cand-tel">${escapar(c.telefone||'')}</div></div>
+      ${badge}
+    </div>`;
+  }).join('');
 }
 
 /* ============ Contratação ============ */
@@ -723,14 +771,6 @@ function resetForm(tipo){
     document.getElementById('btnCancelCand').style.display='none';
     document.getElementById('dropCand').classList.remove('tem');
     document.getElementById('dropCandTxt').textContent='Clique para anexar o PDF do currículo';
-  }
-  if(tipo==='entrevista'){
-    document.getElementById('formEntrevista').reset(); document.getElementById('entrId').value='';
-    document.getElementById('tituloFormEntr').textContent='Nova Entrevista';
-    document.getElementById('btnEntrTxt').textContent='Salvar Entrevista';
-    document.getElementById('btnCancelEntr').style.display='none';
-    document.getElementById('dropEntr').classList.remove('tem');
-    document.getElementById('dropEntrTxt').textContent='Clique para anexar o formulário';
   }
   if(tipo==='contratacao'){
     document.getElementById('formContratacao').reset(); document.getElementById('contrId').value='';
