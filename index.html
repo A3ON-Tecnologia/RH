@@ -296,6 +296,8 @@
               </select>
             </div>
           </div>
+          <label>Pretensão salarial mínima</label>
+          <input type="text" id="entrPretensao" inputmode="numeric" placeholder="R$ 0,00" oninput="mascaraMoeda(this)" style="max-width:220px">
           <label>Andamento da entrevista <span class="req">*</span></label>
           <textarea id="entrAndamento" required placeholder="Descreva como foi a entrevista, impressões, pontos observados..."></textarea>
           <label>Formulário da entrevista (anexo)</label>
@@ -475,6 +477,9 @@ async function del(store,id){ await apiFetch('/api/'+store+'/'+id,{method:'DELET
 /* ============ Utilidades ============ */
 function toast(msg,tipo='ok'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show '+tipo; setTimeout(()=>t.className='toast',2600); }
 function mascaraTel(el){ let v=el.value.replace(/\D/g,'').slice(0,11); if(v.length>10) v=v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3'); else if(v.length>6) v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3'); else if(v.length>2) v=v.replace(/(\d{2})(\d{0,5})/,'($1) $2'); else if(v.length>0) v=v.replace(/(\d{0,2})/,'($1'); el.value=v; }
+function mascaraMoeda(el){ let v=el.value.replace(/\D/g,''); if(!v){ el.value=''; return; } v=(parseInt(v,10)/100).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); el.value='R$ '+v; }
+function moedaParaNumero(str){ if(!str) return null; const n=(''+str).replace(/\D/g,''); return n?parseInt(n,10)/100:null; }
+function numeroParaMoeda(num){ if(num==null||num==='') return ''; const n=Number(num); if(isNaN(n)) return ''; return 'R$ '+n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
 function fmtData(iso){ if(!iso)return'—'; const[a,m,d]=iso.split('-'); return `${d}/${m}/${a}`; }
 function hojeISO(){ return new Date().toISOString().slice(0,10); }
 function addDias(iso,dias){ const[a,m,d]=iso.split('-').map(Number); const dt=new Date(a,m-1,d); dt.setDate(dt.getDate()+dias); return dt.toISOString().slice(0,10); }
@@ -583,6 +588,7 @@ function limparCamposEntr(){
   document.getElementById('entrFaculdade').value='';
   document.getElementById('entrFaseFaculdade').value='';
   document.getElementById('entrTrocaFaculdade').value='';
+  document.getElementById('entrPretensao').value='';
   document.getElementById('entrAndamento').value='';
   document.getElementById('entrFormulario').value='';
   document.getElementById('dropEntr').classList.remove('tem');
@@ -611,6 +617,7 @@ async function selecionarCandidatoEntr(candId){
     document.getElementById('entrFaculdade').value=e.faculdade||'';
     document.getElementById('entrFaseFaculdade').value=e.faseFaculdade||'';
     document.getElementById('entrTrocaFaculdade').value=e.trocaFaculdade||'';
+    document.getElementById('entrPretensao').value=numeroParaMoeda(e.pretensaoSalarial);
     document.getElementById('entrAndamento').value=e.andamento||'';
     document.getElementById('btnEntrTxt').textContent='Atualizar Entrevista';
     document.getElementById('btnExcluirEntr').style.display='flex';
@@ -644,10 +651,11 @@ async function salvarEntrevista(ev){
   const faculdade=document.getElementById('entrFaculdade').value.trim();
   const faseFaculdade=document.getElementById('entrFaseFaculdade').value.trim();
   const trocaFaculdade=document.getElementById('entrTrocaFaculdade').value;
+  const pretensaoSalarial=moedaParaNumero(document.getElementById('entrPretensao').value);
   const andamento=document.getElementById('entrAndamento').value.trim();
   const arq=document.getElementById('entrFormulario').files[0];
   if(!data||!andamento){ toast('Preencha data e andamento','erro'); return; }
-  let obj={candId:entrSelCandId,data,hora,situacao,idade,estadoCivil,mora,faculdade,faseFaculdade,trocaFaculdade,andamento};
+  let obj={candId:entrSelCandId,data,hora,situacao,idade,estadoCivil,mora,faculdade,faseFaculdade,trocaFaculdade,pretensaoSalarial,andamento};
   if(!id) obj.criadoEm=hojeISO();
   if(id) obj.id=Number(id);
   if(arq){ obj.formulario=arq; obj.formularioNome=arq.name; }

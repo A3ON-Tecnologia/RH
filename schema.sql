@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS entrevistas (
   faculdade       VARCHAR(255)     NULL,
   fase_faculdade  VARCHAR(255)     NULL,
   troca_faculdade VARCHAR(10)      NULL,        -- Sim / Não / Talvez
+  pretensao_salarial DECIMAL(10,2) NULL,        -- pretensão salarial mínima (R$)
   andamento       TEXT             NOT NULL,
   formulario_nome VARCHAR(255)  NULL,
   formulario      LONGBLOB      NULL,

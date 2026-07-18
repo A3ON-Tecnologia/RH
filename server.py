@@ -4,7 +4,7 @@
 #  Serve a pagina index.html e expoe uma API que le/grava no MySQL.
 #  Rodar:  python server.py   (ou dois cliques em iniciar-servidor.bat)
 # ============================================================
-import json, base64, os, sys, socket, datetime, time, hashlib, hmac, secrets, http.cookies
+import json, base64, os, sys, socket, datetime, time, hashlib, hmac, secrets, http.cookies, decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +39,7 @@ STORES = {
         "scalars": [("candId", "cand_id"), ("data", "data"), ("hora", "hora"), ("situacao", "situacao"),
                      ("idade", "idade"), ("estadoCivil", "estado_civil"), ("mora", "mora"),
                      ("faculdade", "faculdade"), ("faseFaculdade", "fase_faculdade"),
-                     ("trocaFaculdade", "troca_faculdade"),
+                     ("trocaFaculdade", "troca_faculdade"), ("pretensaoSalarial", "pretensao_salarial"),
                      ("andamento", "andamento"), ("criadoEm", "criado_em")],
         "files": [("formulario", "formulario", "formulario_nome", "formulario_mime", "formularioNome")],
     },
@@ -141,6 +141,7 @@ def ensure_schema():
         add_col_if_missing(cur, "entrevistas", "fase_faculdade", "VARCHAR(255) NULL")
         add_col_if_missing(cur, "entrevistas", "troca_faculdade", "VARCHAR(10) NULL")
         ensure_min_varchar(cur, "entrevistas", "troca_faculdade", 10)
+        add_col_if_missing(cur, "entrevistas", "pretensao_salarial", "DECIMAL(10,2) NULL")
         cur.execute(
             "CREATE TABLE IF NOT EXISTS usuarios ("
             "  id INT AUTO_INCREMENT PRIMARY KEY,"
@@ -227,6 +228,8 @@ def excluir_usuario(uid):
 def to_json_value(v):
     if isinstance(v, (datetime.date, datetime.datetime)):
         return v.isoformat()[:10] if isinstance(v, datetime.date) and not isinstance(v, datetime.datetime) else v.isoformat()
+    if isinstance(v, decimal.Decimal):
+        return float(v)
     return v
 
 
