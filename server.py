@@ -39,7 +39,10 @@ STORES = {
         "scalars": [("candId", "cand_id"), ("data", "data"), ("hora", "hora"), ("situacao", "situacao"),
                      ("idade", "idade"), ("estadoCivil", "estado_civil"), ("mora", "mora"),
                      ("faculdade", "faculdade"), ("faseFaculdade", "fase_faculdade"),
-                     ("trocaFaculdade", "troca_faculdade"), ("pretensaoSalarial", "pretensao_salarial"),
+                     ("trocaFaculdade", "troca_faculdade"),
+                     ("salarioExperiencia", "salario_experiencia"),
+                     ("salarioPosExperiencia", "salario_pos_experiencia"),
+                     ("pretensaoSalarial", "pretensao_salarial"),
                      ("andamento", "andamento"), ("criadoEm", "criado_em")],
         "files": [("formulario", "formulario", "formulario_nome", "formulario_mime", "formularioNome")],
     },
@@ -141,7 +144,21 @@ def ensure_schema():
         add_col_if_missing(cur, "entrevistas", "fase_faculdade", "VARCHAR(255) NULL")
         add_col_if_missing(cur, "entrevistas", "troca_faculdade", "VARCHAR(10) NULL")
         ensure_min_varchar(cur, "entrevistas", "troca_faculdade", 10)
+        add_col_if_missing(cur, "entrevistas", "salario_experiencia", "DECIMAL(10,2) NULL")
+        add_col_if_missing(cur, "entrevistas", "salario_pos_experiencia", "DECIMAL(10,2) NULL")
         add_col_if_missing(cur, "entrevistas", "pretensao_salarial", "DECIMAL(10,2) NULL")
+        # Configurações gerais (chave/valor) — ex.: salários padrão
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS configuracoes ("
+            "  chave VARCHAR(50) PRIMARY KEY,"
+            "  valor VARCHAR(255) NULL"
+            ") ENGINE=InnoDB"
+        )
+        # Semeia os padrões só se ainda não existirem (não sobrescreve o que o usuário ajustar)
+        cur.execute(
+            "INSERT IGNORE INTO configuracoes (chave, valor) VALUES "
+            "('salario_experiencia', '2041.00'), ('salario_pos_experiencia', '2321.00')"
+        )
         cur.execute(
             "CREATE TABLE IF NOT EXISTS usuarios ("
             "  id INT AUTO_INCREMENT PRIMARY KEY,"
@@ -220,6 +237,49 @@ def excluir_usuario(uid):
     conn = conectar()
     try:
         conn.cursor().execute("DELETE FROM usuarios WHERE id=%s", (int(uid),))
+    finally:
+        conn.close()
+
+
+# ---------- Configurações (salários padrão etc.) ----------
+CONFIG_MAP = {
+    "salarioExperiencia": "salario_experiencia",
+    "salarioPosExperiencia": "salario_pos_experiencia",
+}
+
+
+def obter_config():
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT chave, valor FROM configuracoes")
+        d = {r["chave"]: r["valor"] for r in cur.fetchall()}
+    finally:
+        conn.close()
+
+    def num(chave):
+        v = d.get(chave)
+        try:
+            return float(v) if v not in (None, "") else None
+        except (TypeError, ValueError):
+            return None
+
+    return {jkey: num(chave) for jkey, chave in CONFIG_MAP.items()}
+
+
+def salvar_config(data):
+    conn = conectar()
+    try:
+        cur = conn.cursor()
+        for jkey, chave in CONFIG_MAP.items():
+            if jkey in data:
+                v = data[jkey]
+                v = "" if v is None else str(v)
+                cur.execute(
+                    "INSERT INTO configuracoes (chave, valor) VALUES (%s, %s) "
+                    "ON DUPLICATE KEY UPDATE valor=VALUES(valor)",
+                    (chave, v),
+                )
     finally:
         conn.close()
 
@@ -492,6 +552,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if p == ["api", "usuarios"]:
                 return self._send(200, listar_usuarios())
+            if p == ["api", "config"]:
+                return self._send(200, obter_config())
             if p == ["api", "backup"]:
                 return self._send(200, backup())
             if len(p) >= 2 and p[0] == "api" and p[1] in STORES:
@@ -557,6 +619,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if not self._exige_login():
                 return
+            if p == ["api", "config"]:
+                salvar_config(self._corpo())
+                return self._send(200, {"ok": True})
             if len(p) == 3 and p[0] == "api" and p[1] == "usuarios":
                 alterar_senha(int(p[2]), (self._corpo().get("senha") or ""))
                 return self._send(200, {"ok": True})

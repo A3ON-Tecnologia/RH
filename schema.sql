@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS entrevistas (
   faculdade       VARCHAR(255)     NULL,
   fase_faculdade  VARCHAR(255)     NULL,
   troca_faculdade VARCHAR(10)      NULL,        -- Sim / Não / Talvez
+  salario_experiencia     DECIMAL(10,2) NULL,   -- salário durante a experiência (R$)
+  salario_pos_experiencia DECIMAL(10,2) NULL,   -- salário após a experiência (R$)
   pretensao_salarial DECIMAL(10,2) NULL,        -- pretensão salarial mínima (R$)
   andamento       TEXT             NOT NULL,
   formulario_nome VARCHAR(255)  NULL,
@@ -76,8 +78,18 @@ CREATE TABLE IF NOT EXISTS usuarios (
   criado_em  DATE         NULL
 ) ENGINE=InnoDB;
 
+-- ---------- 6) Configurações gerais (chave/valor) ----------
+-- Guarda os salários padrão usados para pré-preencher as entrevistas.
+CREATE TABLE IF NOT EXISTS configuracoes (
+  chave VARCHAR(50)  PRIMARY KEY,
+  valor VARCHAR(255) NULL
+) ENGINE=InnoDB;
+INSERT IGNORE INTO configuracoes (chave, valor) VALUES
+  ('salario_experiencia', '2041.00'),
+  ('salario_pos_experiencia', '2321.00');
+
 -- ============================================================
---  5) Usuário da aplicação (OPCIONAL, porém recomendado)
+--  Usuário da aplicação (OPCIONAL, porém recomendado)
 --  Evita usar o 'root' na aplicação. TROQUE a senha abaixo antes de rodar!
 --  Descomente as 3 linhas se quiser criar o usuário agora.
 -- ============================================================
